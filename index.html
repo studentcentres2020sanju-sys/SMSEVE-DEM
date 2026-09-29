@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ever Shine – Assessment Tracker</title>
+<title>Luna - Student Management System</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f7f9;--card:#fff;--tx:#1c2430;--mu:#68758a;--bd:#dde2ea;--ac:#0f766e;--red:#c62828;--amb:#b45309;--grn:#15803d;--rb:#fdecea;--ab:#fef3e2;--gb:#e6f4ea}
@@ -30,18 +30,71 @@ dialog h2{margin:0 0 10px;font-size:16px}.g2{display:grid;grid-template-columns:
 .sw{width:20px;height:20px;border-radius:50%;border:2px solid var(--card);outline:1px solid var(--bd);cursor:pointer;padding:0}.sw.on{outline:2px solid var(--tx)}
 #auth{display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:var(--bg);z-index:20;padding:16px}
 body.anon #auth{display:flex}body.anon header,body.anon main{display:none}
-.ac{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:26px;width:min(380px,100%)}.ac a{color:var(--ac)}
+.ac{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:26px;width:min(380px,100%);box-shadow:0 10px 40px rgba(0,0,0,0.1)}.ac a{color:var(--ac)}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:9px;opacity:0;transition:.25s;pointer-events:none;z-index:9}#toast.on{opacity:1}
 @media(max-width:520px){.g2{grid-template-columns:1fr}}
+
+/* --- Smooth Animations & Hover Effects --- */
+button, input, select, textarea, a, .sw, .pill { transition: all 0.2s ease; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.05); filter: brightness(0.95); }
+.btn:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+.stat, .box, .ac { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.stat:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+tbody tr:hover { background-color: color-mix(in srgb, var(--card) 90%, var(--tx)); }
+dialog[open] { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+dialog::backdrop { animation: fadeIn 0.3s ease-out forwards; }
+@keyframes popIn { from { opacity: 0; transform: scale(0.95) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes fadeIn { from { background: rgba(0,0,0,0); } to { background: rgba(0, 0, 0, 0.45); } }
+#toast { transform: translateX(-50%) translateY(20px); transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+#toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+input[type="checkbox"] { cursor: pointer; accent-color: var(--ac); transition: transform 0.1s ease; }
+input[type="checkbox"]:active { transform: scale(0.8); }
+
+/* --- Dynamic Graphics --- */
+#auth {
+    background: linear-gradient(-45deg, var(--bg), var(--bd), color-mix(in srgb, var(--ac) 15%, var(--bg)), var(--bg));
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+}
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.pulse-err { display: inline-block; width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+@keyframes slideUpFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+tbody tr { animation: slideUpFade 0.4s ease-out forwards; }
+.pbar-bg { height: 5px; background: var(--bd); border-radius: 3px; margin-top: 10px; overflow: hidden; position: relative; }
+.pbar-fg { position: absolute; left: 0; top: 0; height: 100%; background: var(--ac); width: 0%; border-radius: 3px; transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.stat:nth-child(2) .pbar-fg { background: var(--red); }
+.stat:nth-child(3) .pbar-fg { background: var(--amb); }
+
+.logo { border-radius: 50%; object-fit: cover; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 </style></head><body>
-<header><div><h1>Assessment Tracker</h1><div class="sub">Ever Shine College · internal · <span id="conn">connecting…</span></div></div>
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" id="th"></button><span id="sw" style="display:flex;gap:6px"></span><span class="sub" id="who"></span><button class="btn" id="so">Sign out</button> <button class="btn" id="exp">Export CSV</button> <button class="btn p" id="log">+ Log class</button></div></header>
+
+<header>
+    <div style="display:flex; gap:12px; align-items:center;">
+        <img src="image_4729df.jpg" alt="Luna Logo" class="logo" style="width:40px; height:40px;">
+        <div>
+            <h1 style="margin-bottom:2px;">Luna</h1>
+            <div class="sub">Student Management System <span id="conn" style="color:var(--red);margin-left:6px;"></span></div>
+        </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="th"></button>
+        <span id="sw" style="display:flex;gap:6px"></span>
+        <span class="sub" id="who"></span>
+        <button class="btn" id="so">Sign out</button>
+        <button class="btn" id="exp">Export CSV</button>
+        <button class="btn p" id="log">+ Log class</button>
+    </div>
+</header>
 <main>
 <div class="tabs"><button class="btn on" data-t="fu">Follow-up</button><button class="btn" data-t="em" id="emt">Emails due</button><button class="btn" data-t="st">Students</button><button class="btn hide" data-t="sf" id="sft">Staff</button><button class="btn" data-t="cu">Courses &amp; units</button></div>
 
 <section id="fu"><div class="stats" id="stats"></div>
 <div class="bar"><input id="q" placeholder="Search student or unit"><select id="fc"></select><select id="fw"><option value="out">Outstanding</option><option value="over">Overdue</option><option value="week">Due in 7 days</option><option value="sub">Submitted – awaiting marking</option><option value="all">Everything</option></select></div>
-<div class="wrap"><table><thead><tr><th>Student</th><th>Unit</th><th>Class</th><th>Due</th><th>Status</th><th>Follow-up</th><th></th></tr></thead><tbody id="rows"></tbody></table></div><div class="note" id="empty"></div></section>
+<div class="wrap"><table><thead><tr><th>Student</th><th>Unit</th><th>Class</th><th>Due</th><th>Status</th><th>Follow-up</th><th></th></tr></thead><tbody id="rows"></tbody></table></div><div id="empty"></div></section>
 
 <section id="em" class="hide"><p class="note">Today's reminders, worked out from each unit's due date: course notice (when logged), 1 week before, 3 days before, overdue warning, and a second warning 7 days after the due date. Marking a unit Submitted stops them. One email per student covers all their units.</p><input id="cc" placeholder="CC on overdue warnings (optional email)" style="max-width:380px;margin-bottom:10px"><div id="emlist"></div></section>
 <section id="st" class="hide"><div class="bar"><button class="btn p" id="ns" style="flex:0 0 auto">+ Add student</button></div>
@@ -70,9 +123,24 @@ body.anon #auth{display:flex}body.anon header,body.anon main{display:none}
 
 <dialog id="sd"><h2 id="sh">Student</h2><div class="g2"><div><label class="l">Full name</label><input id="sn"></div><div><label class="l">Student ID</label><input id="si"></div><div><label class="l">Course</label><select id="sc"></select></div><div><label class="l">Phone</label><input id="se"></div><div><label class="l">Email</label><input id="sm" type="email"></div></div>
 <div class="ft"><button class="btn" id="sdel" style="color:var(--red)">Delete student &amp; all their records</button><span><button class="btn" data-x="sd">Close</button> <button class="btn p" id="ssv">Save</button></span></div></dialog>
-<div id="auth"><div class="ac"><h1 style="margin-bottom:4px">Ever Shine College</h1><div class="sub" style="margin-bottom:16px">Assessment Tracker · staff login</div>
-<div id="af"><label class="l">Email</label><input id="ae" type="email" autocomplete="username" style="margin-bottom:10px"><label class="l" id="apl">Password</label><input id="ap" type="password" autocomplete="current-password" style="margin-bottom:12px"><button class="btn p" id="ab" style="width:100%">Sign in</button><div class="note" id="am"></div><div class="note"><a href="#" id="at">Create an account</a> · <a href="#" id="ar">Forgot password?</a></div></div>
-<div id="na" class="hide"><p id="nat" class="note"></p><button class="btn" id="so2">Sign out</button></div></div></div>
+
+<div id="auth">
+    <div class="ac">
+        <div style="text-align:center; margin-bottom:16px;">
+            <img src="image_4729df.jpg" alt="Luna Logo" class="logo" style="width:72px; height:72px;">
+        </div>
+        <h1 style="margin-bottom:4px; text-align:center;">Luna</h1>
+        <div class="sub" style="margin-bottom:16px; text-align:center;">Student Management System · staff login</div>
+        <div id="af">
+            <label class="l">Email</label><input id="ae" type="email" autocomplete="username" style="margin-bottom:10px">
+            <label class="l" id="apl">Password</label><input id="ap" type="password" autocomplete="current-password" style="margin-bottom:12px">
+            <button class="btn p" id="ab" style="width:100%">Sign in</button>
+            <div class="note" id="am"></div>
+            <div class="note"><a href="#" id="at">Create an account</a> · <a href="#" id="ar">Forgot password?</a></div>
+        </div>
+        <div id="na" class="hide"><p id="nat" class="note"></p><button class="btn" id="so2">Sign out</button></div>
+    </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -101,9 +169,21 @@ const all=recs.map(x=>({x,s:stu(x.sid)||{name:"(removed)",sid:"",contact:""}}));
 let r=all.filter(({x,s})=>(!fc||x.course===fc)&&(!q||(s.name+" "+s.sid+" "+x.unit).toLowerCase().includes(q))&&(fw==="all"||(fw==="out"&&isOut(x))||(fw==="over"&&isOut(x)&&dl(x.due)<0)||(fw==="week"&&isOut(x)&&dl(x.due)>=0&&dl(x.due)<=7)||(fw==="sub"&&x.status==="Submitted")));
 r.sort((a,b)=>a.x.due<b.x.due?-1:a.x.due>b.x.due?1:0);
 const o=all.filter(a=>isOut(a.x)),ov=o.filter(a=>dl(a.x.due)<0);
-$("#stats").innerHTML=[["Outstanding units",o.length],["Overdue units",ov.length],["Students overdue",new Set(ov.map(a=>a.x.sid)).size],["Due in 7 days",o.filter(a=>dl(a.x.due)>=0&&dl(a.x.due)<=7).length],["Awaiting marking",all.filter(a=>a.x.status==="Submitted").length]].map(([a,b])=>`<div class="stat"><b>${b}</b><span>${a}</span></div>`).join("");
+const maxStat = Math.max(1, all.length), maxStu = Math.max(1, students.length);
+$("#stats").innerHTML=[
+    ["Outstanding units", o.length, o.length/maxStat],
+    ["Overdue units", ov.length, ov.length/maxStat],
+    ["Students overdue", new Set(ov.map(a=>a.x.sid)).size, new Set(ov.map(a=>a.x.sid)).size/maxStu],
+    ["Due in 7 days", o.filter(a=>dl(a.x.due)>=0&&dl(a.x.due)<=7).length, o.filter(a=>dl(a.x.due)>=0&&dl(a.x.due)<=7).length/maxStat],
+    ["Awaiting marking", all.filter(a=>a.x.status==="Submitted").length, all.filter(a=>a.x.status==="Submitted").length/maxStat]
+].map(([a,b,pct])=>`<div class="stat"><b>${b}</b><span>${a}</span><div class="pbar-bg"><div class="pbar-fg" style="width:${(pct||0)*100}%"></div></div></div>`).join("");
+
 $("#rows").innerHTML=r.map(({x,s})=>{const c=x.contacted?dl(x.contacted):null;return`<tr><td><b>${esc(s.name)}</b><div class="sub">${esc(s.sid)} ${esc(s.contact)}</div></td><td>${esc(x.unit)}<div class="sub">${esc(co(x.course).name)}</div></td><td>${fd(x.classDate)}</td><td>${fd(x.due)}</td><td>${pill(x)}</td><td class="sub">${c==null?"Not contacted":c===0?"Contacted today":"Contacted "+(-c)+"d ago"}${x.note?"<br>"+esc(x.note):""}</td><td style="white-space:nowrap"><button class="btn s" data-a="sub" data-id="${esc(x.id)}">Submitted</button> <button class="btn s" data-a="con" data-id="${esc(x.id)}">Contacted</button> <button class="btn s" data-a="cp" data-id="${esc(x.id)}">Copy msg</button> <button class="btn s" data-a="ed" data-id="${esc(x.id)}">Edit</button></td></tr>`}).join("");
-$("#empty").textContent=recs.length?(r.length?"":"Nothing matches this filter."):"No records yet – click “+ Log class” after Saturday’s session.";
+
+const emptyState = `<div style="text-align:center;padding:40px 20px;color:var(--mu)"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;animation:popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg><br>Nothing matches this filter.</div>`;
+const initialEmpty = `<div style="text-align:center;padding:40px 20px;color:var(--mu)"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:12px;opacity:0.4;animation:popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg><br>No records yet – click “+ Log class” after Saturday’s session.</div>`;
+$("#empty").innerHTML=recs.length?(r.length?"":emptyState):initialEmpty;
+
 $("#srows").innerHTML=students.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{const m=recs.filter(x=>x.sid===s.id&&isOut(x));const v=m.filter(x=>dl(x.due)<0).length;return`<tr style="cursor:pointer" data-sid="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="sub">${esc(s.sid)}</div></td><td>${esc(co(s.course).name)}</td><td>${esc(s.email||"")}<div class="sub">${esc(s.contact)}</div></td><td>${m.length}</td><td>${v?`<span class="pill red">${v}</span>`:"0"}</td></tr>`}).join("")}
 function crs(){const f=$("#fc"),v=f.value;f.innerHTML='<option value="">All courses</option>'+cl().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");f.value=v;
 const opts=cl().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");$("#sc").innerHTML=opts;$("#ldc").innerHTML=cl().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}${c.time?" ("+c.time+")":""}</option>`).join("");
@@ -114,7 +194,7 @@ const uu=u.filter(x=>x.toLowerCase().includes(uq));
 $("#ldu").innerHTML=u.length?(uu.length?uu.map(x=>`<label class="chk"><input type="checkbox" data-u="${esc(x)}" ${sel.u.has(x)?"checked":""}>${esc(x)}</label>`).join(""):'<div class="note">No matching unit.</div>'):'<div class="note">No units yet – add them under Courses &amp; units.</div>';
 const ss=students.filter(s=>sq?(s.name+" "+s.sid).toLowerCase().includes(sq):s.course===c).sort((a,b)=>a.name.localeCompare(b.name));
 $("#lds").innerHTML=ss.length?ss.map(s=>`<label class="chk"><input type="checkbox" data-s="${esc(s.id)}" ${sel.s.has(s.id)?"checked":""}>${esc(s.name)} <span class="sub">${esc(s.sid)} · ${esc(co(s.course).name)}${s.email?" · "+esc(s.email):""}</span></label>`).join(""):`<div class="note">${sq?"No student found – add them below.":"No students on this course yet – add below."}</div>`;
-const d=$("#ldd").value,n=+$("#ldn").value||0;$("#ldp").value=d?fd(addD(d,n))+" "+parse(addD(d,n)).getFullYear():"";
+const d=$("#ldd").value,n=+$("#ldn").value\vert{}\vert{}0;$("#ldp").value=d?fd(addD(d,n))+" "+parse(addD(d,n)).getFullYear():"";
 $("#ldx").textContent=`${sel.u.size} unit(s) × ${sel.s.size} student(s) = ${sel.u.size*sel.s.size} records`}
 $("#lus").oninput=$("#lss").oninput=ldlists;
 const one=(inp,box,key,set)=>inp.onkeydown=e=>{if(e.key!=="Enter")return;e.preventDefault();const b=[...box.querySelectorAll("input")];if(b.length===1){set.add(b[0].dataset[key]);inp.value="";ldlists()}};
@@ -132,24 +212,22 @@ $("#lsv").disabled=false;$("#ld").close();toast(k+" record(s) created")};
 $("#rows").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const x=recs.find(r=>r.id===b.dataset.id);if(!x)return;const a=b.dataset.a;
 if(a==="sub"){await put("records/"+x.id,{...strip(x),status:"Submitted"})}
 else if(a==="con"){await put("records/"+x.id,{...strip(x),contacted:iso(new Date())})}
-else if(a==="cp"){const s=stu(x.sid)||{name:"there"},t=`Hi ${s.name.split(" ")[0]}, this is Ever Shine College. Your assessment for ${x.unit} (class on ${fd(x.classDate)}) is due ${fd(x.due)}${dl(x.due)<0?" and is now overdue":""}. Please submit as soon as you can, or contact us if you need help.`;
+else if(a==="cp"){const s=stu(x.sid)||{name:"there"},t=`Hi ${s.name.split(" ")[0]},\n\nThis is Luna. Your assessment for ${x.unit} (class on ${fd(x.classDate)}) is due ${fd(x.due)}${dl(x.due)<0?" and is now overdue":""}. Please submit as soon as you can, or contact us if you need help.`;
 try{await navigator.clipboard.writeText(t);toast("Message copied")}catch(_){prompt("Copy this message:",t)}}
-else{cur=x.id;$("#rt").textContent=(stu(x.sid)||{name:"?"}).name+" – "+x.unit;$("#rs").value=x.status;$("#rdd").value=x.due;$("#rn").value=x.note||"";$("#rd").showModal()}};
+else{cur=x.id;$("#rt").textContent=(stu(x.sid)||{name:"?"}).name+" – "+x.unit;$("#rs").value=x.status;$("#rdd").value=x.due;$("#rn").value=x.note\vert{}\vert{}"";$("#rd").showModal()}};
 $("#rsv").onclick=async()=>{const x=recs.find(r=>r.id===cur);if(await put("records/"+cur,{...strip(x),status:$("#rs").value,due:$("#rdd").value,note:$("#rn").value}))$("#rd").close()};
 let arm=null;const two=(b,fn)=>{if(arm===b){arm=null;fn()}else{arm=b;b.dataset.o=b.dataset.o||b.textContent;b.textContent="Click again to confirm";setTimeout(()=>{if(arm===b){arm=null;b.textContent=b.dataset.o}},3000)}};
 $("#rdel").onclick=function(){two(this,async()=>{await del("records/"+cur);$("#rd").close()})};
-function sopen(id){cur=id;const s=stu(id)||{name:"",sid:"",course:cl()[0].id,contact:""};$("#sh").textContent=id?"Edit student":"New student";$("#sn").value=s.name;$("#si").value=s.sid;$("#sc").value=s.course;$("#se").value=s.contact||"";$("#sm").value=s.email||"";$("#sdel").style.display=id?"":"none";$("#sd").showModal()}
+function sopen(id){cur=id;const s=stu(id)||{name:"",sid:"",course:cl()[0].id,contact:""};$("#sh").textContent=id?"Edit student":"New student";$("#sn").value=s.name;$("#si").value=s.sid;$("#sc").value=s.course;$("#se").value=s.contact\vert{}\vert{}"";$("#sm").value=s.email||"";$("#sdel").style.display=id?"":"none";$("#sd").showModal()}
 $("#ns").onclick=()=>sopen(null);$("#srows").onclick=e=>{const t=e.target.closest("tr");if(t)sopen(t.dataset.sid)};
 $("#ssv").onclick=async()=>{if(!$("#sn").value.trim())return toast("Enter a name");if(await put("students/"+(cur||"s"+Date.now().toString(36)),{name:$("#sn").value.trim(),sid:$("#si").value.trim(),course:$("#sc").value,contact:$("#se").value.trim(),email:$("#sm").value.trim()}))$("#sd").close()};
-$("#sdel").onclick=function(){two(this,async()=>{const id=cur;await del("students/"+id);$("#sd").close();toast("Student deleted")})};
-$$("[data-x]").forEach(b=>b.onclick=()=>$("#"+b.dataset.x).close());
+$("#sdel").onclick=function(){two(this,async()=>{const id=cur;await del("students/"+id);$("#sd").close();toast("Student deleted")})}; $$("[data-x]").forEach(b=>b.onclick=()=>$("#"+b.dataset.x).close());
 $("#clist").onclick=async e=>{const id=e.target.dataset.sc;if(!id)return;const c=co(id),ta=document.querySelector(`textarea[data-c="${id}"]`);
 if(await put("courses/"+id,{name:c.name,time:c.time||"",units:ta.value.split("\n").map(x=>x.trim()).filter(Boolean)}))toast("Units saved")};
-["#q","#fc","#fw"].forEach(s=>$(s).oninput=render);
-$$(".tabs .btn").forEach(b=>b.onclick=()=>{$$(".tabs .btn").forEach(x=>x.classList.toggle("on",x===b));["fu","em","st","cu","sf"].forEach(t=>$("#"+t).classList.toggle("hide",t!==b.dataset.t))});
+["#q","#fc","#fw"].forEach(s=>$(s).oninput=render);$$(".tabs .btn").forEach(b=>b.onclick=()=>{$$(".tabs .btn").forEach(x=>x.classList.toggle("on",x===b));["fu","em","st","cu","sf"].forEach(t=>$("#"+t).classList.toggle("hide",t!==b.dataset.t))});
 $("#exp").onclick=async()=>{const h=["Student","ID","Course","Unit","Class date","Due","Status","Last contacted","Notes"];
 const csv=[h,...recs.map(x=>{const s=stu(x.sid)||{};return[s.name,s.sid,co(x.course).name,x.unit,x.classDate,x.due,x.status,x.contacted,x.note]})].map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");
-try{const d=await claude.use("downloads");if(!d)throw 0;await d.save({filename:"assessment-tracker.csv",data:csv})}catch(e){if(e&&e.code==="cancelled")return;const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="assessment-tracker.csv";a.click()}};
+try{const d=await claude.use("downloads");if(!d)throw 0;await d.save({filename:"luna-export.csv",data:csv})}catch(e){if(e&&e.code==="cancelled")return;const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="luna-export.csv";a.click()}};
 const SB=supabase.createClient("https://bionxlwsmvgaozfrqtqv.supabase.co","sb_publishable_8ONQsT8Opq68ozn8_Cptbw_tqhCwMXR");
 const MAP={students:{name:"name",sid:"sid",course:"course",contact:"contact",email:"email"},records:{sid:"student_id",unit:"unit",course:"course",classDate:"class_date",due:"due",status:"status",contacted:"contacted",note:"note",sent:"sent"},courses:{name:"name",time:"session_time",units:"units"}};
 const DK=["contacted","class_date","due"];
@@ -158,14 +236,14 @@ const fromRow=(t,r)=>{const o={id:r.id};for(const k in MAP[t]){let v=r[MAP[t][k]
 async function all(t,k="id"){let out=[],i=0;for(;;){const{data,error}=await SB.from(t).select("*").order(k).range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;i+=1000}return out}
 let staffL=[],uid=null,isAdm=false,me="";
 async function refresh(t){try{if(t==="staff"){staffL=await all("staff","email");stf();return}
-const a=(await all(t)).map(r=>fromRow(t,r));if(t==="students")students=a;else if(t==="records")recs=a;else{courses={};a.forEach(c=>courses[c.id]=c)}crs();render()}catch(e){$("#conn").textContent="sync error – "+(e.message||"")}}
+const a=(await all(t)).map(r=>fromRow(t,r));if(t==="students")students=a;else if(t==="records")recs=a;else{courses={};a.forEach(c=>courses[c.id]=c)}crs();render()}catch(e){$("#conn").innerHTML=`<span class="pulse-err"></span>sync error – ${e.message||""}`}}
 const sched=(()=>{const T={};return t=>{clearTimeout(T[t]);T[t]=setTimeout(()=>refresh(t),200)}})();
 const shim={doc(p){const[t,id]=p.split("/");return{set:async o=>{const{error}=await SB.from(t).upsert(toRow(t,id,o));if(error)throw error;sched(t)},delete:async()=>{const{error}=await SB.from(t).delete().eq("id",id);if(error)throw error;sched(t);if(t==="students")sched("records")}}}};
 function stf(){$("#sfr2").innerHTML=staffL.map(x=>`<tr><td>${esc(x.email)}</td><td>${esc(x.role)}</td><td>${x.email===me?'<span class="sub">you</span>':`<button class="btn s" data-e="${esc(x.email)}">Remove</button>`}</td></tr>`).join("")}
 $("#sfa").onclick=async()=>{const e=$("#sfe").value.trim().toLowerCase();if(!e)return toast("Enter an email");const{error}=await SB.from("staff").insert({email:e,role:$("#sfr").value});if(error)return toast(error.message);$("#sfe").value="";refresh("staff")};
 $("#sfr2").onclick=async e=>{const m=e.target.dataset.e;if(!m)return;const{error}=await SB.from("staff").delete().eq("email",m);if(error)return toast(error.message);refresh("staff")};
 let mode="in";
-const am=(m,bad)=>{$("#am").textContent=m||"";$("#am").style.color=bad?"var(--red)":"var(--mu)"};
+const am=(m,bad)=>{$("#am").textContent=m\vert{}\vert{}"";$("#am").style.color=bad?"var(--red)":"var(--mu)"};
 function setMode(m){mode=m;$("#ab").textContent={in:"Sign in",up:"Create account",rec:"Set new password"}[m];$("#at").textContent=m==="up"?"Back to sign in":"Create an account";$("#apl").textContent=m==="rec"?"New password":"Password";$("#ae").disabled=m==="rec";$("#ap").autocomplete=m==="in"?"current-password":"new-password";am("")}
 $("#at").onclick=e=>{e.preventDefault();setMode(mode==="up"?"in":"up")};
 $("#ap").onkeydown=e=>{if(e.key==="Enter")$("#ab").click()};
@@ -181,7 +259,7 @@ if(uid===ses.user.id)return;uid=ses.user.id;me=(ses.user.email||"").toLowerCase(
 const{data:ok}=await SB.rpc("is_staff");
 if(!ok){document.body.classList.add("anon");$("#af").classList.add("hide");$("#na").classList.remove("hide");$("#nat").textContent="You are signed in as "+me+", but this email is not on the staff list yet. Ask an admin to add it, then sign in again.";uid=null;return}
 $("#na").classList.add("hide");$("#af").classList.remove("hide");document.body.classList.remove("anon");db=shim;
-isAdm=!!(await SB.rpc("is_admin")).data;$("#sft").classList.toggle("hide",!isAdm);$("#who").textContent=me;$("#conn").textContent="live · Supabase";
+isAdm=!!(await SB.rpc("is_admin")).data;$("#sft").classList.toggle("hide",!isAdm);$("#who").textContent=me;$("#conn").innerHTML="";
 await Promise.all(["courses","students","records"].concat(isAdm?["staff"]:[]).map(refresh))}
 SB.auth.onAuthStateChange((ev,ses)=>{if(ev==="PASSWORD_RECOVERY"){document.body.classList.add("anon");setMode("rec");return}setTimeout(()=>start(ses),0)});
 setInterval(()=>{if(uid&&!document.hidden)["students","records","courses"].forEach(refresh)},30000);
@@ -198,12 +276,12 @@ const STG=["notice","week","three","over","over2"],CC=()=>{try{return localStora
 const dfull=s=>parse(s).toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"long",year:"numeric"});
 function stage(r){if(!isOut(r))return null;const d=dl(r.due),el=[];if(d>=0)el.push(0);if(d>=0&&d<=7)el.push(1);if(d>=0&&d<=3)el.push(2);if(d<0)el.push(3);if(d<=-7)el.push(4);const t=el[el.length-1];return t!==undefined&&!(r.sent||{})[STG[t]]?t:null}
 function mail(s,st,rs){const f=(s.name||"").split(" ")[0]||"there",L=rs.map(r=>"• "+r.unit+" – due "+dfull(r.due)).join("\n");
-const T=[["Your assessment due dates – Ever Shine College","Hi "+f+",\n\nThank you for attending class. Here are your assessment submission dates:\n\n"+L+"\n\nPlease submit by these dates. If you need help or an extension, contact us before the due date."],
+const T=[["Your assessment due dates – Luna","Hi "+f+",\n\nThank you for attending class. Here are your assessment submission dates:\n\n"+L+"\n\nPlease submit by these dates. If you need help or an extension, contact us before the due date."],
 ["Reminder: assessment due within a week","Hi "+f+",\n\nA reminder that the following assessment(s) are due within a week:\n\n"+L+"\n\nPlease submit on time, or contact us if you need support."],
 ["Reminder: assessment due in 3 days","Hi "+f+",\n\nThe following assessment(s) are due in 3 days or less:\n\n"+L+"\n\nPlease submit on time, or contact us now if you need help."],
 ["Overdue: assessment not yet submitted","Hi "+f+",\n\nWe have not received the following assessment(s), which are now overdue:\n\n"+L+"\n\nPlease submit as soon as possible, or contact us today to discuss your situation."],
 ["Second notice: overdue assessment","Hi "+f+",\n\nThis is a second notice. The following assessment(s) are still outstanding:\n\n"+L+"\n\nPlease submit immediately or contact us so we can support you to complete your course."]][st];
-return{su:T[0],body:T[1]+"\n\nKind regards,\nEver Shine College Training Team"}}
+return{su:T[0],body:T[1]+"\n\nKind regards,\nLuna Training Team"}}
 let EG=[];
 function em(){const m={};recs.forEach(r=>{const t=stage(r);if(t===null)return;const k=r.sid+"|"+t;(m[k]=m[k]||{k,sid:r.sid,st:t,rs:[]}).rs.push(r)});
 EG=Object.values(m).sort((a,b)=>b.st-a.st||(a.rs[0].due<b.rs[0].due?-1:1));$("#emt").textContent="Emails due"+(EG.length?" ("+EG.length+")":"");
@@ -216,7 +294,7 @@ if(a==="gm"||a==="ml"){const u=a==="gm"?"https://mail.google.com/mail/?view=cm&f
 for(const r of g.rs)await put("records/"+r.id,{...strip(r),sent:{...(r.sent||{}),[STG[g.st]]:iso(new Date())}});toast("Marked as sent")};
 $("#cc").value=CC();$("#cc").oninput=()=>{try{localStorage.setItem("cc",$("#cc").value.trim())}catch(e){}};
 const r0=render;render=function(){r0();em()};em();
-const nm=x=>String(x||"").toLowerCase().replace(/[^\p{L}\p{N}@.\s]/gu," ").replace(/\s+/g," ").trim();
+const nm=x=>String(x||"").toLowerCase().replace(/[^a-z0-9@.\s]/g," ").replace(/\s+/g," ").trim();
 let UN=[];
 function bulk(){const raw=$("#bkt").value,ls=(raw.includes("\n")?raw.split(/[\n;]+/):raw.split(/[,;]+/)).map(x=>x.trim()).filter(Boolean),ok=[],am=[];UN=[];
 ls.forEach(l=>{const tk=l.split("\t").map(nm).filter(Boolean);let f=[];
