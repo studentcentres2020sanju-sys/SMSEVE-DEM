@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ever Shine – Assessment Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f7f9;--card:#fff;--tx:#1c2430;--mu:#68758a;--bd:#dde2ea;--ac:#0f766e;--red:#c62828;--amb:#b45309;--grn:#15803d;--rb:#fdecea;--ab:#fef3e2;--gb:#e6f4ea}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161c;--card:#1b212a;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3542;--ac:#2dd4bf;--red:#ff8a80;--amb:#fbbf24;--grn:#6ee7a0;--rb:#3a1f1f;--ab:#3a2c14;--gb:#16301f}}
+:root[data-theme="dark"]{--bg:#12161c;--card:#1b212a;--tx:#e6eaf0;--mu:#93a0b3;--bd:#2c3542;--ac:#2dd4bf;--red:#ff8a80;--amb:#fbbf24;--grn:#6ee7a0;--rb:#3a1f1f;--ab:#3a2c14;--gb:#16301f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--bd)}
+h1{font-size:18px;margin:0}.sub{color:var(--mu);font-size:12px}main{max-width:1150px;margin:0 auto;padding:16px 20px 40px}
+button,select,input,textarea{font:inherit;color:var(--tx)}
+.btn{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:6px 11px;cursor:pointer}.btn.p{background:var(--ac);border-color:var(--ac);color:#fff}.btn.on{border-color:var(--ac);color:var(--ac);font-weight:600}.btn.s{padding:3px 8px;font-size:12px}
+input,select,textarea{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px 9px;width:100%}
+input[type=checkbox]{width:auto}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}.stat b{font-size:22px;display:block}.stat span{color:var(--mu);font-size:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.bar>*{flex:1 1 150px;width:auto}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:820px}th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--bd);vertical-align:top}th{font-size:12px;color:var(--mu);white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.red{background:var(--rb);color:var(--red)}.amb{background:var(--ab);color:var(--amb)}.grn{background:var(--gb);color:var(--grn)}.gry{background:var(--bg);color:var(--mu)}
+dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);width:min(640px,94vw);padding:18px;max-height:90vh}dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 10px;font-size:16px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}label.l{font-size:12px;color:var(--mu);display:block;margin-bottom:2px}
+.chk{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd)}.box{max-height:170px;overflow:auto;border:1px solid var(--bd);border-radius:8px;padding:2px 10px;margin-bottom:10px}
+.note{color:var(--mu);font-size:12px;margin:6px 0}.hide{display:none}.ft{display:flex;justify-content:space-between;margin-top:12px;gap:8px}
+.sw{width:20px;height:20px;border-radius:50%;border:2px solid var(--card);outline:1px solid var(--bd);cursor:pointer;padding:0}.sw.on{outline:2px solid var(--tx)}
+#auth{display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:var(--bg);z-index:20;padding:16px}
+body.anon #auth{display:flex}body.anon header,body.anon main{display:none}
+.ac{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:26px;width:min(380px,100%)}.ac a{color:var(--ac)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:9px;opacity:0;transition:.25s;pointer-events:none;z-index:9}#toast.on{opacity:1}
+@media(max-width:520px){.g2{grid-template-columns:1fr}}
+</style></head><body>
+<header><div><h1>Assessment Tracker</h1><div class="sub">Ever Shine College · internal · <span id="conn">connecting…</span></div></div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" id="th"></button><span id="sw" style="display:flex;gap:6px"></span><span class="sub" id="who"></span><button class="btn" id="so">Sign out</button> <button class="btn" id="exp">Export CSV</button> <button class="btn p" id="log">+ Log class</button></div></header>
+<main>
+<div class="tabs"><button class="btn on" data-t="fu">Follow-up</button><button class="btn" data-t="em" id="emt">Emails due</button><button class="btn" data-t="st">Students</button><button class="btn hide" data-t="sf" id="sft">Staff</button><button class="btn" data-t="cu">Courses &amp; units</button></div>
+
+<section id="fu"><div class="stats" id="stats"></div>
+<div class="bar"><input id="q" placeholder="Search student or unit"><select id="fc"></select><select id="fw"><option value="out">Outstanding</option><option value="over">Overdue</option><option value="week">Due in 7 days</option><option value="sub">Submitted – awaiting marking</option><option value="all">Everything</option></select></div>
+<div class="wrap"><table><thead><tr><th>Student</th><th>Unit</th><th>Class</th><th>Due</th><th>Status</th><th>Follow-up</th><th></th></tr></thead><tbody id="rows"></tbody></table></div><div class="note" id="empty"></div></section>
+
+<section id="em" class="hide"><p class="note">Today's reminders, worked out from each unit's due date: course notice (when logged), 1 week before, 3 days before, overdue warning, and a second warning 7 days after the due date. Marking a unit Submitted stops them. One email per student covers all their units.</p><input id="cc" placeholder="CC on overdue warnings (optional email)" style="max-width:380px;margin-bottom:10px"><div id="emlist"></div></section>
+<section id="st" class="hide"><div class="bar"><button class="btn p" id="ns" style="flex:0 0 auto">+ Add student</button></div>
+<div class="wrap"><table><thead><tr><th>Student</th><th>Course</th><th>Contact</th><th>Outstanding</th><th>Overdue</th></tr></thead><tbody id="srows"></tbody></table></div></section>
+
+<section id="sf" class="hide"><p class="note">People who can sign in and see student data. A new staff member creates an account on the login page with the <b>same email</b> you add here.</p>
+<div class="bar"><input id="sfe" type="email" placeholder="staff email"><select id="sfr"><option value="staff">Staff</option><option value="admin">Admin</option></select><button class="btn p" id="sfa" style="flex:0 0 auto">Add</button></div>
+<div class="wrap"><table style="min-width:420px"><thead><tr><th>Email</th><th>Role</th><th></th></tr></thead><tbody id="sfr2"></tbody></table></div></section>
+<section id="cu" class="hide"><p class="note">One unit per line. These are the units you tick when logging a class.</p><div id="clist"></div></section>
+</main>
+
+<dialog id="ld"><h2>Log a class</h2>
+<div class="g2"><div><label class="l">Class date</label><input type="date" id="ldd"></div><div><label class="l">Course / session</label><select id="ldc"></select></div>
+<div><label class="l">Days allowed to submit</label><input type="number" id="ldn" value="14" min="1"></div><div><label class="l">Due date (preview)</label><input id="ldp" disabled></div></div>
+<div class="note">Units covered this class (2–3 usually)</div><input id="lus" placeholder="Search units…" style="margin-bottom:6px"><div class="box" id="ldu"></div>
+<div class="note">Students who attended</div>
+<details id="bk" style="margin-bottom:8px"><summary class="note" style="cursor:pointer">Paste a list of students (names, IDs or emails)</summary><textarea id="bkt" rows="4" placeholder="One per line – or comma-separated. Copy straight from a spreadsheet or roll sheet."></textarea><div style="display:flex;gap:8px;margin-top:6px"><button class="btn p s" id="bkb">Match &amp; tick</button><button class="btn s" id="bkc">Clear</button></div><div id="bkr" class="note"></div></details>
+<input id="lss" placeholder="Search by name or student ID (Enter adds a single match)…" style="margin-bottom:6px"><div class="box" id="lds"></div>
+<div class="g2" style="margin-bottom:6px"><input id="qn" placeholder="New student name"><input id="qi" placeholder="Student ID"><input id="qm" type="email" placeholder="Email" style="grid-column:1/-1"></div>
+<button class="btn s" id="qa">+ Add new student to this course</button>
+<div class="ft"><span class="note" id="ldx"></span><span><button class="btn" data-x="ld">Cancel</button> <button class="btn p" id="lsv">Create records</button></span></div></dialog>
+
+<dialog id="rd"><h2 id="rt"></h2><div class="g2"><div><label class="l">Status</label><select id="rs"><option>Pending</option><option>Submitted</option><option>Competent</option><option>Resubmit needed</option></select></div><div><label class="l">Due date</label><input type="date" id="rdd"></div></div>
+<label class="l" style="margin-top:10px">Notes</label><textarea id="rn" rows="3"></textarea>
+<div class="ft"><button class="btn" id="rdel" style="color:var(--red)">Delete</button><span><button class="btn" data-x="rd">Close</button> <button class="btn p" id="rsv">Save</button></span></div></dialog>
+
+<dialog id="sd"><h2 id="sh">Student</h2><div class="g2"><div><label class="l">Full name</label><input id="sn"></div><div><label class="l">Student ID</label><input id="si"></div><div><label class="l">Course</label><select id="sc"></select></div><div><label class="l">Phone</label><input id="se"></div><div><label class="l">Email</label><input id="sm" type="email"></div></div>
+<div class="ft"><button class="btn" id="sdel" style="color:var(--red)">Delete student &amp; all their records</button><span><button class="btn" data-x="sd">Close</button> <button class="btn p" id="ssv">Save</button></span></div></dialog>
+<div id="auth"><div class="ac"><h1 style="margin-bottom:4px">Ever Shine College</h1><div class="sub" style="margin-bottom:16px">Assessment Tracker · staff login</div>
+<div id="af"><label class="l">Email</label><input id="ae" type="email" autocomplete="username" style="margin-bottom:10px"><label class="l" id="apl">Password</label><input id="ap" type="password" autocomplete="current-password" style="margin-bottom:12px"><button class="btn p" id="ab" style="width:100%">Sign in</button><div class="note" id="am"></div><div class="note"><a href="#" id="at">Create an account</a> · <a href="#" id="ar">Forgot password?</a></div></div>
+<div id="na" class="hide"><p id="nat" class="note"></p><button class="btn" id="so2">Sign out</button></div></div></div>
+<div id="toast"></div>
+
+<script>
+const DEF=[{id:"CHC33021",name:"Cert III Individual Support",time:"Sat 9–11am",units:[]},{id:"CHC43015",name:"Cert IV Ageing Support",time:"Sat 11am–1pm",units:[]},{id:"CHC43121",name:"Cert IV Disability Support",time:"Sat 11am–1pm",units:[]},{id:"MED",name:"Medication units",time:"",units:[]}];
+let db=null,students=[],courses={},recs=[],cur=null,sel={u:new Set(),s:new Set()},tv;
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=n=>String(n).padStart(2,"0"),iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()),parse=s=>new Date(s+"T00:00:00");
+const today=()=>parse(iso(new Date())),dl=s=>s?Math.round((parse(s)-today())/864e5):null;
+const addD=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+const lastSat=()=>{const d=today();d.setDate(d.getDate()-((d.getDay()+1)%7));return iso(d)};
+const fd=s=>s?parse(s).toLocaleDateString("en-AU",{day:"numeric",month:"short"}):"—";
+const hs=u=>{let h=0;for(const c of u)h=(h*31+c.charCodeAt(0))|0;return(h>>>0).toString(36)};
+const cl=()=>DEF.map(c=>({...c,...(courses[c.id]||{})})).concat(Object.values(courses).filter(c=>!DEF.some(d=>d.id===c.id)));
+const co=id=>cl().find(c=>c.id===id)||{id,name:id||"?",units:[]},stu=id=>students.find(s=>s.id===id);
+const isOut=r=>r.status==="Pending"||r.status==="Resubmit needed";
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tv);tv=setTimeout(()=>t.classList.remove("on"),2600)}
+async function put(p,o){if(!db){toast("Preview only – not saved");return false}try{await db.doc(p).set(o);return true}catch(e){toast("Could not save: "+(e.message||e.code));return false}}
+async function del(p){if(!db)return;try{await db.doc(p).delete()}catch(e){toast("Could not delete")}}
+const strip=({id,...o})=>o;
+function pill(r){if(r.status==="Competent")return'<span class="pill grn">Competent</span>';if(r.status==="Submitted")return'<span class="pill gry">Submitted</span>';
+const d=dl(r.due);return d<0?`<span class="pill red">${-d}d overdue</span>`:d===0?'<span class="pill red">Due today</span>':`<span class="pill ${d<=3?"red":d<=7?"amb":"grn"}">${d}d left</span>`}
+function render(){
+const q=$("#q").value.toLowerCase(),fc=$("#fc").value,fw=$("#fw").value;
+const all=recs.map(x=>({x,s:stu(x.sid)||{name:"(removed)",sid:"",contact:""}}));
+let r=all.filter(({x,s})=>(!fc||x.course===fc)&&(!q||(s.name+" "+s.sid+" "+x.unit).toLowerCase().includes(q))&&(fw==="all"||(fw==="out"&&isOut(x))||(fw==="over"&&isOut(x)&&dl(x.due)<0)||(fw==="week"&&isOut(x)&&dl(x.due)>=0&&dl(x.due)<=7)||(fw==="sub"&&x.status==="Submitted")));
+r.sort((a,b)=>a.x.due<b.x.due?-1:a.x.due>b.x.due?1:0);
+const o=all.filter(a=>isOut(a.x)),ov=o.filter(a=>dl(a.x.due)<0);
+$("#stats").innerHTML=[["Outstanding units",o.length],["Overdue units",ov.length],["Students overdue",new Set(ov.map(a=>a.x.sid)).size],["Due in 7 days",o.filter(a=>dl(a.x.due)>=0&&dl(a.x.due)<=7).length],["Awaiting marking",all.filter(a=>a.x.status==="Submitted").length]].map(([a,b])=>`<div class="stat"><b>${b}</b><span>${a}</span></div>`).join("");
+$("#rows").innerHTML=r.map(({x,s})=>{const c=x.contacted?dl(x.contacted):null;return`<tr><td><b>${esc(s.name)}</b><div class="sub">${esc(s.sid)} ${esc(s.contact)}</div></td><td>${esc(x.unit)}<div class="sub">${esc(co(x.course).name)}</div></td><td>${fd(x.classDate)}</td><td>${fd(x.due)}</td><td>${pill(x)}</td><td class="sub">${c==null?"Not contacted":c===0?"Contacted today":"Contacted "+(-c)+"d ago"}${x.note?"<br>"+esc(x.note):""}</td><td style="white-space:nowrap"><button class="btn s" data-a="sub" data-id="${esc(x.id)}">Submitted</button> <button class="btn s" data-a="con" data-id="${esc(x.id)}">Contacted</button> <button class="btn s" data-a="cp" data-id="${esc(x.id)}">Copy msg</button> <button class="btn s" data-a="ed" data-id="${esc(x.id)}">Edit</button></td></tr>`}).join("");
+$("#empty").textContent=recs.length?(r.length?"":"Nothing matches this filter."):"No records yet – click “+ Log class” after Saturday’s session.";
+$("#srows").innerHTML=students.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{const m=recs.filter(x=>x.sid===s.id&&isOut(x));const v=m.filter(x=>dl(x.due)<0).length;return`<tr style="cursor:pointer" data-sid="${esc(s.id)}"><td><b>${esc(s.name)}</b><div class="sub">${esc(s.sid)}</div></td><td>${esc(co(s.course).name)}</td><td>${esc(s.email||"")}<div class="sub">${esc(s.contact)}</div></td><td>${m.length}</td><td>${v?`<span class="pill red">${v}</span>`:"0"}</td></tr>`}).join("")}
+function crs(){const f=$("#fc"),v=f.value;f.innerHTML='<option value="">All courses</option>'+cl().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");f.value=v;
+const opts=cl().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");$("#sc").innerHTML=opts;$("#ldc").innerHTML=cl().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}${c.time?" ("+c.time+")":""}</option>`).join("");
+if(!(document.activeElement&&document.activeElement.tagName==="TEXTAREA"))$("#clist").innerHTML=cl().map(c=>`<div class="stat" style="margin-bottom:10px"><b style="font-size:15px">${esc(c.name)}</b><span>${esc(c.id)}</span><textarea data-c="${esc(c.id)}" rows="5" style="margin-top:8px" placeholder="CHCAGE011 – Provide support to people living with dementia">${esc((c.units||[]).join("\n"))}</textarea><button class="btn p s" data-sc="${esc(c.id)}" style="margin-top:8px">Save units</button></div>`).join("");
+if($("#ld").open)ldlists()}
+function ldlists(){const c=$("#ldc").value,u=co(c).units||[],uq=$("#lus").value.toLowerCase().trim(),sq=$("#lss").value.toLowerCase().trim();
+const uu=u.filter(x=>x.toLowerCase().includes(uq));
+$("#ldu").innerHTML=u.length?(uu.length?uu.map(x=>`<label class="chk"><input type="checkbox" data-u="${esc(x)}" ${sel.u.has(x)?"checked":""}>${esc(x)}</label>`).join(""):'<div class="note">No matching unit.</div>'):'<div class="note">No units yet – add them under Courses &amp; units.</div>';
+const ss=students.filter(s=>sq?(s.name+" "+s.sid).toLowerCase().includes(sq):s.course===c).sort((a,b)=>a.name.localeCompare(b.name));
+$("#lds").innerHTML=ss.length?ss.map(s=>`<label class="chk"><input type="checkbox" data-s="${esc(s.id)}" ${sel.s.has(s.id)?"checked":""}>${esc(s.name)} <span class="sub">${esc(s.sid)} · ${esc(co(s.course).name)}${s.email?" · "+esc(s.email):""}</span></label>`).join(""):`<div class="note">${sq?"No student found – add them below.":"No students on this course yet – add below."}</div>`;
+const d=$("#ldd").value,n=+$("#ldn").value||0;$("#ldp").value=d?fd(addD(d,n))+" "+parse(addD(d,n)).getFullYear():"";
+$("#ldx").textContent=`${sel.u.size} unit(s) × ${sel.s.size} student(s) = ${sel.u.size*sel.s.size} records`}
+$("#lus").oninput=$("#lss").oninput=ldlists;
+const one=(inp,box,key,set)=>inp.onkeydown=e=>{if(e.key!=="Enter")return;e.preventDefault();const b=[...box.querySelectorAll("input")];if(b.length===1){set.add(b[0].dataset[key]);inp.value="";ldlists()}};
+one($("#lus"),$("#ldu"),"u",sel.u);$("#lss").onkeydown=e=>{if(e.key!=="Enter")return;e.preventDefault();const b=[...$("#lds").querySelectorAll("input")];if(b.length===1){sel.s.add(b[0].dataset.s);$("#lss").value="";ldlists()}};
+$("#lus").onkeydown=e=>{if(e.key!=="Enter")return;e.preventDefault();const b=[...$("#ldu").querySelectorAll("input")];if(b.length===1){sel.u.add(b[0].dataset.u);$("#lus").value="";ldlists()}};
+$("#log").onclick=()=>{sel={u:new Set(),s:new Set()};$("#ldd").value=lastSat();$("#lus").value=$("#lss").value="";$("#bkt").value="";$("#bkr").innerHTML="";UN=[];$("#ld").showModal();ldlists()};
+["#ldd","#ldn"].forEach(s=>$(s).oninput=ldlists);$("#ldc").onchange=()=>{sel={u:new Set(),s:new Set()};ldlists()};
+$("#ld").onchange=e=>{const t=e.target;if(t.dataset.u!==undefined)t.checked?sel.u.add(t.dataset.u):sel.u.delete(t.dataset.u);if(t.dataset.s!==undefined)t.checked?sel.s.add(t.dataset.s):sel.s.delete(t.dataset.s);ldlists()};
+$("#qa").onclick=async()=>{const n=$("#qn").value.trim();if(!n)return toast("Enter a name");const id="s"+Date.now().toString(36);
+if(await put("students/"+id,{name:n,sid:$("#qi").value.trim(),course:$("#ldc").value,contact:"",email:$("#qm").value.trim()})){sel.s.add(id);$("#lss").value="";$("#qn").value=$("#qi").value=$("#qm").value=""}};
+$("#lsv").onclick=async()=>{const d=$("#ldd").value,c=$("#ldc").value,n=+$("#ldn").value;if(!d||!sel.u.size||!sel.s.size)return toast("Pick a date, at least one unit and one student");
+let k=0;$("#lsv").disabled=true;for(const s of sel.s)for(const u of sel.u){const id=s+"_"+d+"_"+hs(u);if(recs.some(r=>r.id===id))continue;
+if(await put("records/"+id,{sid:s,unit:u,course:c,classDate:d,due:addD(d,n),status:"Pending",contacted:"",note:""}))k++}
+$("#lsv").disabled=false;$("#ld").close();toast(k+" record(s) created")};
+$("#rows").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const x=recs.find(r=>r.id===b.dataset.id);if(!x)return;const a=b.dataset.a;
+if(a==="sub"){await put("records/"+x.id,{...strip(x),status:"Submitted"})}
+else if(a==="con"){await put("records/"+x.id,{...strip(x),contacted:iso(new Date())})}
+else if(a==="cp"){const s=stu(x.sid)||{name:"there"},t=`Hi ${s.name.split(" ")[0]}, this is Ever Shine College. Your assessment for ${x.unit} (class on ${fd(x.classDate)}) is due ${fd(x.due)}${dl(x.due)<0?" and is now overdue":""}. Please submit as soon as you can, or contact us if you need help.`;
+try{await navigator.clipboard.writeText(t);toast("Message copied")}catch(_){prompt("Copy this message:",t)}}
+else{cur=x.id;$("#rt").textContent=(stu(x.sid)||{name:"?"}).name+" – "+x.unit;$("#rs").value=x.status;$("#rdd").value=x.due;$("#rn").value=x.note||"";$("#rd").showModal()}};
+$("#rsv").onclick=async()=>{const x=recs.find(r=>r.id===cur);if(await put("records/"+cur,{...strip(x),status:$("#rs").value,due:$("#rdd").value,note:$("#rn").value}))$("#rd").close()};
+let arm=null;const two=(b,fn)=>{if(arm===b){arm=null;fn()}else{arm=b;b.dataset.o=b.dataset.o||b.textContent;b.textContent="Click again to confirm";setTimeout(()=>{if(arm===b){arm=null;b.textContent=b.dataset.o}},3000)}};
+$("#rdel").onclick=function(){two(this,async()=>{await del("records/"+cur);$("#rd").close()})};
+function sopen(id){cur=id;const s=stu(id)||{name:"",sid:"",course:cl()[0].id,contact:""};$("#sh").textContent=id?"Edit student":"New student";$("#sn").value=s.name;$("#si").value=s.sid;$("#sc").value=s.course;$("#se").value=s.contact||"";$("#sm").value=s.email||"";$("#sdel").style.display=id?"":"none";$("#sd").showModal()}
+$("#ns").onclick=()=>sopen(null);$("#srows").onclick=e=>{const t=e.target.closest("tr");if(t)sopen(t.dataset.sid)};
+$("#ssv").onclick=async()=>{if(!$("#sn").value.trim())return toast("Enter a name");if(await put("students/"+(cur||"s"+Date.now().toString(36)),{name:$("#sn").value.trim(),sid:$("#si").value.trim(),course:$("#sc").value,contact:$("#se").value.trim(),email:$("#sm").value.trim()}))$("#sd").close()};
+$("#sdel").onclick=function(){two(this,async()=>{const id=cur;await del("students/"+id);$("#sd").close();toast("Student deleted")})};
+$$("[data-x]").forEach(b=>b.onclick=()=>$("#"+b.dataset.x).close());
+$("#clist").onclick=async e=>{const id=e.target.dataset.sc;if(!id)return;const c=co(id),ta=document.querySelector(`textarea[data-c="${id}"]`);
+if(await put("courses/"+id,{name:c.name,time:c.time||"",units:ta.value.split("\n").map(x=>x.trim()).filter(Boolean)}))toast("Units saved")};
+["#q","#fc","#fw"].forEach(s=>$(s).oninput=render);
+$$(".tabs .btn").forEach(b=>b.onclick=()=>{$$(".tabs .btn").forEach(x=>x.classList.toggle("on",x===b));["fu","em","st","cu","sf"].forEach(t=>$("#"+t).classList.toggle("hide",t!==b.dataset.t))});
+$("#exp").onclick=async()=>{const h=["Student","ID","Course","Unit","Class date","Due","Status","Last contacted","Notes"];
+const csv=[h,...recs.map(x=>{const s=stu(x.sid)||{};return[s.name,s.sid,co(x.course).name,x.unit,x.classDate,x.due,x.status,x.contacted,x.note]})].map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\n");
+try{const d=await claude.use("downloads");if(!d)throw 0;await d.save({filename:"assessment-tracker.csv",data:csv})}catch(e){if(e&&e.code==="cancelled")return;const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="assessment-tracker.csv";a.click()}};
+const SB=supabase.createClient("https://bionxlwsmvgaozfrqtqv.supabase.co","sb_publishable_8ONQsT8Opq68ozn8_Cptbw_tqhCwMXR");
+const MAP={students:{name:"name",sid:"sid",course:"course",contact:"contact",email:"email"},records:{sid:"student_id",unit:"unit",course:"course",classDate:"class_date",due:"due",status:"status",contacted:"contacted",note:"note",sent:"sent"},courses:{name:"name",time:"session_time",units:"units"}};
+const DK=["contacted","class_date","due"];
+const toRow=(t,id,o)=>{const r={id};for(const k in MAP[t]){const c=MAP[t][k];let v=o[k];if(v==null||(DK.includes(c)&&v===""))v=k==="units"?[]:k==="sent"?{}:DK.includes(c)?null:"";r[c]=v}return r};
+const fromRow=(t,r)=>{const o={id:r.id};for(const k in MAP[t]){let v=r[MAP[t][k]];if(v==null)v=k==="units"?[]:k==="sent"?{}:"";o[k]=v}return o};
+async function all(t,k="id"){let out=[],i=0;for(;;){const{data,error}=await SB.from(t).select("*").order(k).range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;i+=1000}return out}
+let staffL=[],uid=null,isAdm=false,me="";
+async function refresh(t){try{if(t==="staff"){staffL=await all("staff","email");stf();return}
+const a=(await all(t)).map(r=>fromRow(t,r));if(t==="students")students=a;else if(t==="records")recs=a;else{courses={};a.forEach(c=>courses[c.id]=c)}crs();render()}catch(e){$("#conn").textContent="sync error – "+(e.message||"")}}
+const sched=(()=>{const T={};return t=>{clearTimeout(T[t]);T[t]=setTimeout(()=>refresh(t),200)}})();
+const shim={doc(p){const[t,id]=p.split("/");return{set:async o=>{const{error}=await SB.from(t).upsert(toRow(t,id,o));if(error)throw error;sched(t)},delete:async()=>{const{error}=await SB.from(t).delete().eq("id",id);if(error)throw error;sched(t);if(t==="students")sched("records")}}}};
+function stf(){$("#sfr2").innerHTML=staffL.map(x=>`<tr><td>${esc(x.email)}</td><td>${esc(x.role)}</td><td>${x.email===me?'<span class="sub">you</span>':`<button class="btn s" data-e="${esc(x.email)}">Remove</button>`}</td></tr>`).join("")}
+$("#sfa").onclick=async()=>{const e=$("#sfe").value.trim().toLowerCase();if(!e)return toast("Enter an email");const{error}=await SB.from("staff").insert({email:e,role:$("#sfr").value});if(error)return toast(error.message);$("#sfe").value="";refresh("staff")};
+$("#sfr2").onclick=async e=>{const m=e.target.dataset.e;if(!m)return;const{error}=await SB.from("staff").delete().eq("email",m);if(error)return toast(error.message);refresh("staff")};
+let mode="in";
+const am=(m,bad)=>{$("#am").textContent=m||"";$("#am").style.color=bad?"var(--red)":"var(--mu)"};
+function setMode(m){mode=m;$("#ab").textContent={in:"Sign in",up:"Create account",rec:"Set new password"}[m];$("#at").textContent=m==="up"?"Back to sign in":"Create an account";$("#apl").textContent=m==="rec"?"New password":"Password";$("#ae").disabled=m==="rec";$("#ap").autocomplete=m==="in"?"current-password":"new-password";am("")}
+$("#at").onclick=e=>{e.preventDefault();setMode(mode==="up"?"in":"up")};
+$("#ap").onkeydown=e=>{if(e.key==="Enter")$("#ab").click()};
+$("#ab").onclick=async()=>{const email=$("#ae").value.trim(),password=$("#ap").value;if(!password||(mode!=="rec"&&!email))return am("Enter your email and password",1);
+$("#ab").disabled=true;let r;
+if(mode==="in")r=await SB.auth.signInWithPassword({email,password});else if(mode==="up")r=await SB.auth.signUp({email,password});else{r=await SB.auth.updateUser({password});if(!r.error){setMode("in");am("Password updated.")}}
+$("#ab").disabled=false;if(r.error){const m=r.error.message||"";return am(mode==="up"&&/database error|EMAIL_NOT_ON_STAFF/i.test(m)?"This email has not been added by an admin yet. Ask an admin to add it under the Staff tab, then try again.":m,1)}if(mode==="up"&&!r.data.session)am("Account created. Check your email to confirm it, then sign in.")};
+$("#ar").onclick=async e=>{e.preventDefault();const email=$("#ae").value.trim();if(!email)return am("Enter your email first",1);const{error}=await SB.auth.resetPasswordForEmail(email,{redirectTo:location.href.split("#")[0]});am(error?error.message:"Password reset email sent.",!!error)};
+const out=()=>SB.auth.signOut();$("#so").onclick=$("#so2").onclick=out;
+async function start(ses){
+if(!ses){uid=null;db=null;students=[];recs=[];courses={};document.body.classList.add("anon");$("#af").classList.remove("hide");$("#na").classList.add("hide");crs();render();return}
+if(uid===ses.user.id)return;uid=ses.user.id;me=(ses.user.email||"").toLowerCase();
+const{data:ok}=await SB.rpc("is_staff");
+if(!ok){document.body.classList.add("anon");$("#af").classList.add("hide");$("#na").classList.remove("hide");$("#nat").textContent="You are signed in as "+me+", but this email is not on the staff list yet. Ask an admin to add it, then sign in again.";uid=null;return}
+$("#na").classList.add("hide");$("#af").classList.remove("hide");document.body.classList.remove("anon");db=shim;
+isAdm=!!(await SB.rpc("is_admin")).data;$("#sft").classList.toggle("hide",!isAdm);$("#who").textContent=me;$("#conn").textContent="live · Supabase";
+await Promise.all(["courses","students","records"].concat(isAdm?["staff"]:[]).map(refresh))}
+SB.auth.onAuthStateChange((ev,ses)=>{if(ev==="PASSWORD_RECOVERY"){document.body.classList.add("anon");setMode("rec");return}setTimeout(()=>start(ses),0)});
+setInterval(()=>{if(uid&&!document.hidden)["students","records","courses"].forEach(refresh)},30000);
+document.addEventListener("visibilitychange",()=>{if(uid&&!document.hidden)["students","records","courses"].forEach(refresh)});
+document.body.classList.add("anon");crs();render();
+const AC=["#2563eb","#4f46e5","#9333ea","#e11d48","#ea580c","#0d9488"];
+function setAc(c){document.documentElement.style.setProperty("--ac",c);try{localStorage.setItem("ac",c)}catch(e){}$("#sw").innerHTML=AC.map(x=>`<button class="sw ${x===c?"on":""}" data-c="${x}" style="background:${x}" title="Theme colour"></button>`).join("")}
+$("#sw").onclick=e=>{if(e.target.dataset.c)setAc(e.target.dataset.c)};
+let sv="#4f46e5";try{sv=localStorage.getItem("ac")||sv}catch(e){}setAc(sv);
+function setTh(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("th",t)}catch(e){}$("#th").textContent=t==="dark"?"☀️ Light":"🌙 Dark"}
+$("#th").onclick=()=>setTh(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
+let tt="light";try{tt=localStorage.getItem("th")||tt}catch(e){}setTh(tt);
+const STG=["notice","week","three","over","over2"],CC=()=>{try{return localStorage.getItem("cc")||""}catch(e){return""}};
+const dfull=s=>parse(s).toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"long",year:"numeric"});
+function stage(r){if(!isOut(r))return null;const d=dl(r.due),el=[];if(d>=0)el.push(0);if(d>=0&&d<=7)el.push(1);if(d>=0&&d<=3)el.push(2);if(d<0)el.push(3);if(d<=-7)el.push(4);const t=el[el.length-1];return t!==undefined&&!(r.sent||{})[STG[t]]?t:null}
+function mail(s,st,rs){const f=(s.name||"").split(" ")[0]||"there",L=rs.map(r=>"• "+r.unit+" – due "+dfull(r.due)).join("\n");
+const T=[["Your assessment due dates – Ever Shine College","Hi "+f+",\n\nThank you for attending class. Here are your assessment submission dates:\n\n"+L+"\n\nPlease submit by these dates. If you need help or an extension, contact us before the due date."],
+["Reminder: assessment due within a week","Hi "+f+",\n\nA reminder that the following assessment(s) are due within a week:\n\n"+L+"\n\nPlease submit on time, or contact us if you need support."],
+["Reminder: assessment due in 3 days","Hi "+f+",\n\nThe following assessment(s) are due in 3 days or less:\n\n"+L+"\n\nPlease submit on time, or contact us now if you need help."],
+["Overdue: assessment not yet submitted","Hi "+f+",\n\nWe have not received the following assessment(s), which are now overdue:\n\n"+L+"\n\nPlease submit as soon as possible, or contact us today to discuss your situation."],
+["Second notice: overdue assessment","Hi "+f+",\n\nThis is a second notice. The following assessment(s) are still outstanding:\n\n"+L+"\n\nPlease submit immediately or contact us so we can support you to complete your course."]][st];
+return{su:T[0],body:T[1]+"\n\nKind regards,\nEver Shine College Training Team"}}
+let EG=[];
+function em(){const m={};recs.forEach(r=>{const t=stage(r);if(t===null)return;const k=r.sid+"|"+t;(m[k]=m[k]||{k,sid:r.sid,st:t,rs:[]}).rs.push(r)});
+EG=Object.values(m).sort((a,b)=>b.st-a.st||(a.rs[0].due<b.rs[0].due?-1:1));$("#emt").textContent="Emails due"+(EG.length?" ("+EG.length+")":"");
+const N=["Course notice","1 week reminder","3 day reminder","Overdue warning","Second overdue warning"],C=["gry","grn","amb","red","red"];
+$("#emlist").innerHTML=EG.length?EG.map(g=>{const s=stu(g.sid)||{name:"(removed)"},x=mail(s,g.st,g.rs),k=esc(g.k);
+return`<div style="background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px"><div><b>${esc(s.name)}</b> <span class="pill ${C[g.st]}">${N[g.st]}</span><div class="sub">${s.email?esc(s.email):"⚠ No email address – add it under Students"}</div></div><div>${s.email?`<button class="btn p s" data-a="gm" data-k="${k}">Gmail</button> <button class="btn s" data-a="ml" data-k="${k}">Mail app</button> `:""}<button class="btn s" data-a="cp" data-k="${k}">Copy</button> <button class="btn s" data-a="ms" data-k="${k}">Mark sent</button></div></div><div class="sub" style="margin-top:8px"><b>Subject:</b> ${esc(x.su)}</div><pre style="white-space:pre-wrap;font:inherit;font-size:13px;color:var(--mu);margin:4px 0 0">${esc(x.body)}</pre></div>`}).join(""):'<div class="note">All caught up – no reminders due today.</div>'}
+$("#emlist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const g=EG.find(x=>x.k===b.dataset.k);if(!g)return;const s=stu(g.sid)||{},x=mail(s,g.st,g.rs),a=b.dataset.a,cc=g.st>=3?CC():"",q=encodeURIComponent;
+if(a==="cp"){try{await navigator.clipboard.writeText(x.su+"\n\n"+x.body);toast("Copied")}catch(_){prompt("Copy this email:",x.body)}return}
+if(a==="gm"||a==="ml"){const u=a==="gm"?"https://mail.google.com/mail/?view=cm&fs=1&to="+q(s.email)+"&su="+q(x.su)+"&body="+q(x.body)+(cc?"&cc="+q(cc):""):"mailto:"+s.email+"?subject="+q(x.su)+"&body="+q(x.body)+(cc?"&cc="+q(cc):"");const l=document.createElement("a");l.href=u;l.target="_blank";l.rel="noopener";l.click()}
+for(const r of g.rs)await put("records/"+r.id,{...strip(r),sent:{...(r.sent||{}),[STG[g.st]]:iso(new Date())}});toast("Marked as sent")};
+$("#cc").value=CC();$("#cc").oninput=()=>{try{localStorage.setItem("cc",$("#cc").value.trim())}catch(e){}};
+const r0=render;render=function(){r0();em()};em();
+const nm=x=>String(x||"").toLowerCase().replace(/[^\p{L}\p{N}@.\s]/gu," ").replace(/\s+/g," ").trim();
+let UN=[];
+function bulk(){const raw=$("#bkt").value,ls=(raw.includes("\n")?raw.split(/[\n;]+/):raw.split(/[,;]+/)).map(x=>x.trim()).filter(Boolean),ok=[],am=[];UN=[];
+ls.forEach(l=>{const tk=l.split("\t").map(nm).filter(Boolean);let f=[];
+for(const t of tk){f=students.filter(s=>[s.sid,s.email,s.name].some(v=>v&&nm(v)===t));if(f.length)break}
+if(!f.length)for(const t of tk){const w=t.split(" ");f=students.filter(s=>{const n=nm(s.name).split(" ");return w.every(a=>n.some(b=>b===a||(a.length>2&&b.startsWith(a))))});if(f.length)break}
+if(f.length===1){sel.s.add(f[0].id);ok.push(f[0])}else if(f.length>1)am.push({l,f});else UN.push(l.split("\t")[0].trim())});
+let h=`<div style="color:var(--grn)">✓ ${ok.length} matched and ticked</div>`;
+if(am.length)h+=`<div style="color:var(--amb)">⚠ ${am.length} matched more than one student – tick these manually:<br>${am.map(a=>esc(a.l)+" → "+a.f.map(s=>esc(s.name)+" ("+esc(s.sid||"no ID")+")").join(" / ")).join("<br>")}</div>`;
+if(UN.length)h+=`<div style="color:var(--red)">✗ ${UN.length} not found: ${UN.map(esc).join(", ")}<br><button class="btn s" id="bka" style="margin-top:4px">Add these as new students</button></div>`;
+$("#bkr").innerHTML=h;ldlists()}
+$("#bkb").onclick=bulk;$("#bkt").onpaste=()=>setTimeout(bulk,0);$("#bkc").onclick=()=>{$("#bkt").value="";$("#bkr").innerHTML="";UN=[]};
+$("#bkr").onclick=async e=>{if(e.target.id!=="bka")return;const c=$("#ldc").value;let i=0;for(const n of UN){const id="s"+Date.now().toString(36)+(i++);if(await put("students/"+id,{name:n,sid:"",course:c,contact:"",email:""}))sel.s.add(id)}UN=[];$("#bkr").innerHTML="";toast("Students added – fill in their ID and email on the Students tab");ldlists()};
+setInterval(render,36e5);
+</script></body></html>
