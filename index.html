@@ -1058,7 +1058,7 @@ function setTh(t){document.documentElement.setAttribute("data-theme",t);try{loca
 $("#th").onclick=()=>setTh(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
 let tt="light";try{tt=localStorage.getItem("th")||tt}catch(e){}setTh(tt);
 // Paste your Apps Script "Web app" URL between the quotes (ends in /exec). See luna-email-apps-script.gs.
-const MAIL_URL="https://script.google.com/a/macros/evershinecollege.edu.au/s/AKfycbwiUZKiMgIQcMnM3MeSB6Y7fbu0GeNge1NLAhxDoLJiAiXYE0CLMJ9CxiPscAiidVD0/exec";
+const MAIL_URL="https://script.google.com/macros/s/AKfycbwiUZKiMgIQcMnM3MeSB6Y7fbu0GeNge1NLAhxDoLJiAiXYE0CLMJ9CxiPscAiidVD0/exec";
 const STG=["notice","week","three","over","over2","resub"],CC=()=>{try{return localStorage.getItem("cc")||""}catch(e){return""}};
 const dfull=s=>parse(s).toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"long",year:"numeric"});
 function stage(r){if(!isOut(r))return null;const d=dl(r.due),sn=r.sent||{},td=iso(new Date());if(Object.values(sn).includes(td))return null;if(r.status==="Resubmit needed"&&!sn.resub)return 5;if(d>=0&&!sn.notice&&r.status!=="Resubmit needed")return 0;if(d<0&&!sn.over)return 3;const el=[];if(d>=0&&d<=7)el.push(1);if(d>=0&&d<=3)el.push(2);if(d<=-7)el.push(4);const t=el[el.length-1];return t!==undefined&&!sn[STG[t]]?t:null}
