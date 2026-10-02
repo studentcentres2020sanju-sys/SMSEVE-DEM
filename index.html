@@ -493,8 +493,8 @@ details.more2>summary{cursor:pointer;color:var(--mu);font-weight:600;padding:6px
 </section>
 
 <section id="em" class="hide">
-  <div class="ph"><div><h1>Emails</h1><p class="sub">Reminders that are due today, worked out from each unit's due date.</p></div></div>
-  <details class="help"><summary>How reminders work</summary><p>Each student gets one email covering all their units: a course notice when a class is logged, then a reminder a week before, another 3 days before, an overdue warning, and a second warning 7 days after the due date. Marking a unit Submitted stops them. Marking one Not yet competent sends your feedback and restarts the reminders for the new due date. Every send is logged.</p></details>
+  <div class="ph"><div><h1>Emails</h1><p class="sub">Reminders due today, and results waiting to be emailed.</p></div></div>
+  <details class="help"><summary>How reminders work</summary><p>Each student gets one email covering all their units: a course notice when a class is logged, then a reminder a week before, another 3 days before, an overdue warning, and a second warning 7 days after the due date. Marking a unit Submitted stops them. Results are different: when you mark a unit Competent or Not yet competent, the student is emailed straight away (you can untick that in the dialog). A Not yet competent email includes your feedback and restarts the reminders for the new due date. Any result that did not go out, because the box was unticked, the student has no email address, or sending failed, waits here to be sent. Every send is logged.</p></details>
   <div class="emb"><div id="embar" style="display:contents"></div><input id="cc" type="email" placeholder="CC overdue warnings to (optional)" aria-label="CC overdue warnings to"></div>
   <div id="emlist"></div>
   <div id="emhist"></div>
@@ -559,7 +559,8 @@ details.more2>summary{cursor:pointer;color:var(--mu);font-weight:600;padding:6px
 
 <dialog id="rd"><h2 id="rt"></h2><div class="g2"><div><label class="l">Status</label><select id="rs"><option>Pending</option><option>Submitted</option><option>Competent</option><option value="Resubmit needed">Not yet competent (resubmit)</option></select></div><div><label class="l">Due date</label><input type="date" id="rdd"></div></div>
 <label class="l" style="margin-top:12px">Notes (private, staff only)</label><textarea id="rn" rows="2"></textarea>
-<label class="l" style="margin-top:12px">Feedback for the student (included in the resubmission email)</label><textarea id="rf" rows="3" placeholder="What they need to fix or add"></textarea>
+<label class="l" style="margin-top:12px">Feedback for the student (included in the result email)</label><textarea id="rf" rows="3" placeholder="What they need to fix or add, or a word of praise"></textarea>
+<div id="rdemw" class="hide"><label class="tick" style="margin-top:14px"><input type="checkbox" id="rdem" checked> <span>Email the student this result</span></label><div class="note" id="rdemn"></div></div>
 <div class="dsub"><button class="btn s" id="rdcon">Mark contacted today</button><button class="btn s" id="rdcp">Copy reminder message</button><button class="btn s" id="rdst">Open student</button></div>
 <div class="ft"><button class="btn danger" id="rdel">Remove record</button><span style="display:flex;gap:8px"><button class="btn" data-x="rd">Close</button> <button class="btn p" id="rsv">Save</button></span></div></dialog>
 
@@ -615,6 +616,10 @@ details.more2>summary{cursor:pointer;color:var(--mu);font-weight:600;padding:6px
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
+const BOOT_HASH=location.hash,BOOT_SEARCH=location.search,PWKEY="lunaPwPending";
+const pwFlag=()=>{try{return localStorage.getItem(PWKEY)==="1"}catch(e){return false}};
+const pwSet=v=>{try{v?localStorage.setItem(PWKEY,"1"):localStorage.removeItem(PWKEY)}catch(e){}};
+let HOLD=(/(^|[#&])type=recovery(&|$)/.test(BOOT_HASH)&&/access_token=/.test(BOOT_HASH))||/(^|[?&])token_hash=/.test(BOOT_SEARCH)||pwFlag();
 
 let db=null,students=[],courses={},recs=[],allStu=[],allRecs=[],ARC=[],cur=null,sel={u:new Set(),s:new Set()},tv;
 let EG=[],LEADS=[],LEADERR="",LEADCUR=null,PENDING_LEAD=null,FW="out",SFILT="all",VIEW="to",PREV="st",PF=null,PENDING_OPEN=null,PFACT=null;
@@ -629,7 +634,7 @@ const hs=u=>{let h=0;for(const c of u)h=(h*31+c.charCodeAt(0))|0;return(h>>>0).t
 const cl=()=>Object.values(courses).filter(c=>!c.archived).sort((a,b)=>a.code<b.code?-1:1);
 const co=id=>courses[id]||{id,code:id||"",name:id||"?"},stu=id=>students.find(s=>s.id===id);
 const isOut=r=>r.status==="Pending"||r.status==="Resubmit needed";
-function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tv);tv=setTimeout(()=>t.classList.remove("on"),2600)}
+function toast(m,ms){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tv);tv=setTimeout(()=>t.classList.remove("on"),ms||2600)}
 const nid=x=>String(x||"").replace(/\s+/g,"").toUpperCase();
 const dupId=(v,ex)=>{const k=nid(v);return k?allStu.find(s=>nid(s.sid)===k&&s.id!==ex)||null:null};
 const dupMsg=(v,d)=>nid(v)+" already belongs to "+d.name+(d.archived?" (archived)":"")+". Each student needs their own ID.";
@@ -656,7 +661,7 @@ function sstat(rs){const o=rs.filter(isOut),ov=o.filter(x=>dl(x.due)<0);return{r
 function spill(t){if(!t.rs.length)return'<span class="pill gry">No units yet</span>';if(t.ov.length)return`<span class="pill red">${t.ov.length} overdue</span>`;if(t.rsb.length)return`<span class="pill amb">${t.rsb.length} to resubmit</span>`;if(t.sub.length)return`<span class="pill blu">${t.sub.length} to mark</span>`;if(t.o.length)return'<span class="pill grn">On track</span>';return'<span class="pill grn">Complete</span>'}
 const bySid=()=>{const m={};recs.forEach(r=>(m[r.sid]=m[r.sid]||[]).push(r));return m};
 const dsub=t=>{const c=t.contacted?dl(t.contacted):null;return c==null?"Not contacted":c===0?"Contacted today":"Contacted "+(-c)+"d ago"};
-const EMN=["Course notice","1 week reminder","3 day reminder","Overdue warning","Second overdue warning","Resubmission needed"],EMC=["gry","grn","amb","red","red","red"];
+const EMN=["Course notice","1 week reminder","3 day reminder","Overdue warning","Second overdue warning","Resubmission needed","Result: Competent"],EMC=["gry","grn","amb","red","red","red","grn"];
 
 /* ---------- motion ---------- */
 const CLS=["enter","enter-fwd","enter-back"];
@@ -823,6 +828,39 @@ if(!confirm("Remove "+u.code+" from "+c.code+"?\n\n"+(n?plural(n,"enrolled stude
 if(await sbw(SB.from("course_units").delete().eq("course_id",c.rid).eq("unit_id",uid))){await loadUnits();toast("Unit removed from the course")}}
 $("#uq").addEventListener("input",render);$("#cuar").addEventListener("change",e=>{CUAR=e.target.checked;render()});
 
+/* ---------- result emails ---------- */
+const rdate=r=>r.resultAt?iso(new Date(r.resultAt)):iso(new Date());
+const rsub=x=>{if(x.status!=="Competent"&&x.status!=="Resubmit needed")return"";if(x.resultPending)return" · Result not emailed yet";if(x.resultSentAt)return" · Result emailed "+fd(iso(new Date(x.resultSentAt)));return x.feedback&&x.status==="Resubmit needed"?" · Feedback sent":""};
+function rdEmailUI(){const x=allRecs.find(r=>r.id===cur),w=$("#rdemw");if(!x){w.classList.add("hide");return}
+const st=$("#rs").value,show=st!==x.status&&(st==="Competent"||st==="Resubmit needed"),s=allStu.find(y=>y.id===x.sid)||{};w.classList.toggle("hide",!show);if(!show)return;
+const cb=$("#rdem"),nt=$("#rdemn");
+if(!s.email){cb.checked=false;cb.disabled=true;nt.textContent=(s.name||"This student")+" has no email address, so this result can't be emailed. Add one on their profile."}
+else if(!MAIL_URL){cb.checked=false;cb.disabled=true;nt.textContent="Email sending isn't set up yet, so the result will wait in Emails."}
+else{cb.disabled=false;cb.checked=true;nt.textContent=(st==="Competent"?"They get a congratulations email that is also a record of the result.":"They get the resubmission email with your feedback and the new due date.")+" Sent to "+s.email+"."}}
+$("#rs").onchange=rdEmailUI;
+async function sendResult(r,st){const s=allStu.find(y=>y.id===r.sid);if(!s||!s.email)return;const stage=st==="Competent"?6:5,x=mail(s,stage,[r]),f=(s.name||"").split(" ")[0]||"the student";
+toast("Saved. Emailing "+f+"…");
+const data=await callMail([{studentId:s.id,stage,recordIds:[r.id],subject:x.su,body:x.body,cc:""}]);const res=data&&data.results&&data.results[0];
+if(!data||data.error||!res||res.status!=="sent"){toast("Saved, but the email did not send: "+((data&&data.error)||(res&&res.error)||"unknown error")+". It is waiting in Emails.");sched("records");return}
+toast("Saved and emailed "+f);sched("records");emLog()}
+
+/* ---------- set-up and sign-in links ---------- */
+const LINK_BAD="That link has expired or has already been used. Enter your email and choose “Forgot password?” to get a new one.";
+function showSetPassword(email){document.body.classList.add("anon");setMode("rec");$("#ae").value=email||"";am("Choose a password to finish setting up your account.")}
+async function linkParams(){
+const q=new URLSearchParams(BOOT_SEARCH),th=q.get("token_hash"),ty=q.get("type"),hp=new URLSearchParams(BOOT_HASH.replace(/^#/,""));
+if(hp.get("error")){HOLD=false;pwSet(false);try{history.replaceState(null,"",location.pathname)}catch(_){}setMode("in");am(LINK_BAD,1);return}
+if(th){try{history.replaceState(null,"",location.pathname)}catch(_){}
+ document.body.classList.add("anon");am("Checking your link…");
+ let r;try{r=await SB.auth.verifyOtp({token_hash:th,type:ty==="invite"?"invite":"recovery"})}catch(e){r={error:e}}
+ if(r.error||!r.data||!r.data.session){HOLD=false;pwSet(false);setMode("in");am(LINK_BAD,1);return}
+ pwSet(true);showSetPassword(r.data.user&&r.data.user.email);return}
+// an older-style link (or a set-up that was started and never finished): they are already signed in by the link,
+// but they must still choose a password before anything opens
+if(HOLD){let r;try{r=await SB.auth.getSession()}catch(e){r={}}const ses=r&&r.data&&r.data.session;
+ if(!ses){HOLD=false;pwSet(false);if(/(^|[#&])type=recovery/.test(BOOT_HASH)){setMode("in");am(LINK_BAD,1)}return}
+ pwSet(true);showSetPassword(ses.user&&ses.user.email)}}
+
 /* ---------- navigation ---------- */
 function showView(v,dir){VIEW=v;["to","st","pf","fu","em","lp","cu","cpg","upg","sf"].forEach(t=>$("#"+t).classList.toggle("hide",t!==v));
 const n=v==="pf"?"st":(v==="cpg"||v==="upg")?"cu":v;$$("[data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===n));$("#pop").classList.add("hide");window.scrollTo(0,0);enter(v,dir);moveInd()}
@@ -851,7 +889,7 @@ const rowsOf=(list,txt)=>list.slice(0,8).map(x=>`<button class="row trow" data-p
 const sect=(title,list,txt,f)=>`<div class="sec"><h2>${title}${list.length>8?`<a data-go="fu" data-f="${f}">See all ${list.length}</a>`:""}</h2><div class="list">${list.length?rowsOf(list,txt):'<div class="empty">Nothing here right now.</div>'}</div></div>`;
 $("#tleft").innerHTML=sect("Overdue",over,x=>plural(x.rs.length,"unit")+" overdue · oldest "+x.old+" days","over")+sect("Waiting to be marked",mark,x=>plural(x.rs.length,"submitted unit"),"sub")}
 const due=LEADS.filter(ldue).sort((a,b)=>a.next_follow_up<b.next_follow_up?-1:1);
-$("#tright").innerHTML=`<div class="sec"><h2>Emails</h2><div class="side-card"><b class="big">${EG.length}</b><p>${EG.length?"reminder"+(EG.length===1?"":"s")+" ready to send today":"No reminders due today"}</p>${EG.length?'<button class="btn p" data-go="em">Review and send</button>':""}</div></div>`+
+$("#tright").innerHTML=`<div class="sec"><h2>Emails</h2><div class="side-card"><b class="big">${EG.length}</b><p>${EG.length?"email"+(EG.length===1?"":"s")+" ready to send today":"No reminders due today"}</p>${EG.length?'<button class="btn p" data-go="em">Review and send</button>':""}</div></div>`+
 `<div class="sec"><h2>Leads to follow up${due.length>5?`<a data-go="lp" data-f="">See all ${due.length}</a>`:""}</h2><div class="list">${due.length?due.slice(0,5).map(l=>{const d=-dl(l.next_follow_up);return`<button class="row" style="grid-template-columns:minmax(0,1fr) auto" data-lid="${esc(l.id)}"><span class="who"><div><b>${esc(l.name)}</b><small>${esc(l.course?cn(l.course):l.source||"New enquiry")}</small></div></span><span class="pill ${d>0?"red":"amb"}">${d>0?d+"d overdue":"Today"}</span></button>`}).join(""):'<div class="empty">No leads to follow up.</div>'}</div></div>`}
 
 /* ---------- students ---------- */
@@ -891,7 +929,7 @@ pfBody(s,rs,t);tabInd(s.id)}
 function actHtml(id){if(!PFACT||PFACT.id!==id||!PFACT.items)return'<p class="sub">Loading…</p>';const it=PFACT.items;
 return it.length?`<ol class="tl">${it.slice(0,25).map(a=>`<li class="${a.kind}${a.failed?" failed":""}"><div class="t">${esc(fdt(a.t))}${a.by?" · "+esc(a.by.split("@")[0]):""}</div><p>${esc(a.text)}</p></li>`).join("")}</ol>`:'<p class="sub">Nothing yet. Emails to this student and changes to their results will show here.</p>'}
 function histHtml(id){if(!PFACT||PFACT.id!==id||!PFACT.emails)return'<p class="sub">Loading…</p>';const e=PFACT.emails;
-return e.length?`<div class="list hist">${e.map(r=>`<div class="row"><span class="sub">${esc(fdt(r.created_at))}</span><span style="min-width:0"><b class="nm">${esc(r.subject||"")}</b><small>${esc((r.sent_by||"").split("@")[0])}</small></span><span>${r.status==="sent"?'<span class="pill grn">sent</span>':r.status==="failed"?'<span class="pill red">failed</span>':'<span class="pill gry">'+esc(r.status)+'</span>'}</span></div>`).join("")}</div>`:'<p class="sub">No emails sent to this student yet.</p>'}
+return e.length?`<div class="list hist">${e.map(r=>`<div class="row"><span class="sub">${esc(fdt(r.created_at))}</span><span style="min-width:0"><b class="nm">${esc(r.subject||"")}</b><small>${esc((r.sent_by||"").split("@")[0])}</small></span><span>${r.status==="sent"?'<span class="pill grn">sent</span>':r.status==="failed"?'<span class="pill red">failed</span>':'<span class="pill gry">'+esc(r.status)+'</span>'}</span>${r.body?`<details class="prev" style="grid-column:1/-1"><summary>View email</summary><pre>${esc(r.body)}</pre></details>`:""}</div>`).join("")}</div>`:'<p class="sub">No emails sent to this student yet.</p>'}
 function pfBody(s,rs,t){const b=$("#pfbody"),tab=PF.tab,mine=EG.filter(g=>g.sid===s.id);
 if(tab==="ov"){const st=[];
 if(t.ov.length)st.push(["red","Overdue: "+plural(t.ov.length,"unit"),"Oldest is "+Math.max(...t.ov.map(r=>-dl(r.due)))+" days late",["View","as"]]);
@@ -906,11 +944,11 @@ else if(tab==="en")enrolTab(s,b);
 else if(tab==="as"){
 if(!rs.length){b.innerHTML='<div class="list"><div class="empty"><b>No units yet</b>Log a class this student attended.<br><button class="btn p" data-log>Log class</button></div></div>';return}
 const g={};rs.forEach(r=>(g[r.classDate||""]=g[r.classDate||""]||[]).push(r));
-b.innerHTML=Object.keys(g).sort().reverse().map(d=>`<div class="cgrp"><h3>Class on ${d?dfull(d):"an unknown date"}</h3><div class="list">${g[d].sort((a,c)=>a.unit<c.unit?-1:1).map(x=>`<div class="row urow" data-ed="${esc(x.id)}" tabindex="0" role="button"><span style="min-width:0"><span class="nm">${esc(ulabel(x))}</span><small>${dsub(x)}${x.feedback&&x.status==="Resubmit needed"?" · Feedback sent":""}</small></span><span>${fd(x.due)}</span><span>${pill(x)}</span><span style="text-align:right">${isOut(x)?`<button class="btn s" data-sub="${esc(x.id)}">Mark submitted</button>`:""}</span></div>`).join("")}</div></div>`).join("")}
+b.innerHTML=Object.keys(g).sort().reverse().map(d=>`<div class="cgrp"><h3>Class on ${d?dfull(d):"an unknown date"}</h3><div class="list">${g[d].sort((a,c)=>a.unit<c.unit?-1:1).map(x=>`<div class="row urow" data-ed="${esc(x.id)}" tabindex="0" role="button"><span style="min-width:0"><span class="nm">${esc(ulabel(x))}</span><small>${dsub(x)}${rsub(x)}</small></span><span>${fd(x.due)}</span><span>${pill(x)}</span><span style="text-align:right">${isOut(x)?`<button class="btn s" data-sub="${esc(x.id)}">Mark submitted</button>`:""}</span></div>`).join("")}</div></div>`).join("")}
 else if(tab==="em"){b.innerHTML=(mine.length?`<div class="sec"><h2>Due today</h2>${mine.map(emCard).join("")}</div>`:'<p class="sub" style="margin:0 0 20px">No reminders are due for this student today.</p>')+`<div class="sec"><h2>Sent to this student</h2>${histHtml(s.id)}</div>`}
 else b.innerHTML=`<dl class="dl"><dt>Full name</dt><dd>${esc(s.name)}</dd><dt>Student ID</dt><dd>${esc(s.sid||"Not set")}</dd><dt>Course</dt><dd>${esc(cn(s.course))}</dd><dt>Email</dt><dd>${s.email?esc(s.email):"Not set"}</dd><dt>Phone</dt><dd>${esc(s.contact||"Not set")}</dd></dl><div style="margin-top:14px"><button class="btn" data-pgo="edit">Edit details</button></div>`}
 async function loadActivity(id){PFACT={id,items:null,emails:null};if(!db)return;const ids=allRecs.filter(r=>r.sid===id).map(r=>r.id),un={};allRecs.forEach(r=>un[r.id]=ulabel(r));
-try{const[a,h]=await Promise.all([SB.from("email_log").select("created_at,subject,status,error,sent_by").eq("student_id",id).order("created_at",{ascending:false}).limit(50),
+try{const[a,h]=await Promise.all([SB.from("email_log").select("created_at,subject,status,error,sent_by,body").eq("student_id",id).order("created_at",{ascending:false}).limit(50),
 ids.length?SB.from("record_status_history").select("record_id,old_status,new_status,changed_by,changed_at").in("record_id",ids).order("changed_at",{ascending:false}).limit(50):Promise.resolve({data:[]})]);
 const items=[].concat((a.data||[]).map(r=>({t:r.created_at,kind:"email",failed:r.status==="failed",by:r.sent_by,text:(r.status==="failed"?"Email failed: ":"Emailed: ")+(r.subject||"")+(r.error?" ("+r.error+")":"")})),(h.data||[]).map(r=>({t:r.changed_at,kind:"status",by:r.changed_by,text:(un[r.record_id]||"A unit")+": "+(r.old_status||"new")+" to "+r.new_status})));
 items.sort((x,y)=>x.t<y.t?1:-1);if(PFACT&&PFACT.id===id){PFACT.items=items;PFACT.emails=a.data||[];if(PF&&PF.id===id&&(PF.tab==="ov"||PF.tab==="em"))renderProfile()}}
@@ -945,14 +983,15 @@ $("#lsv").disabled=false;$("#ld").close();toast(k+" record(s) created"+(sk?", "+
 async function unitSub(id){document.querySelectorAll('[data-ed="'+id+'"]').forEach(r=>r.classList.add("flash"));if(await upd("records/"+id,{status:"Submitted"}))toast("Marked as submitted")}
 function unitEdit(id){const x=recs.find(r=>r.id===id)||allRecs.find(r=>r.id===id);if(!x)return;cur=x.id;const s=allStu.find(y=>y.id===x.sid)||{name:"?"};
 $("#rt").textContent=s.name+" – "+ulabel(x);$("#rs").value=x.status;{const lock=!isAss&&x.status==="Competent";$("#rs").disabled=lock;[...$("#rs").options].forEach(o=>{if(o.value==="Competent")o.disabled=!isAss});$("#rs").title=lock?"Only an assessor or admin can change a Competent result":""}
-$("#rdd").value=x.due;$("#rn").value=x.note||"";$("#rf").value=x.feedback||"";$("#rd").showModal()}
+$("#rdd").value=x.due;$("#rn").value=x.note||"";$("#rf").value=x.feedback||"";rdEmailUI();$("#rd").showModal()}
 $("#rdcon").onclick=async()=>{if(cur&&await upd("records/"+cur,{contacted:iso(new Date())}))toast("Marked as contacted today")};
 $("#rdcp").onclick=async()=>{const x=allRecs.find(r=>r.id===cur);if(!x)return;const s=allStu.find(y=>y.id===x.sid)||{name:"there"},t=`Hi ${s.name.split(" ")[0]},\n\nThis is ${orgName()}. Your assessment for ${ulabel(x)} (class on ${fd(x.classDate)}) is due ${fd(x.due)}${dl(x.due)<0?" and is now overdue":""}. Please submit as soon as you can, or contact us if you need help.`;
 try{await navigator.clipboard.writeText(t);toast("Message copied")}catch(_){prompt("Copy this message:",t)}};
 $("#rdst").onclick=()=>{const x=allRecs.find(r=>r.id===cur);if(!x)return;$("#rd").close();openProfile(x.sid)};
 $("#rsv").onclick=async()=>{const x=recs.find(r=>r.id===cur);if(!x)return;const p={},st=$("#rs").value,du=$("#rdd").value,no=$("#rn").value,fb=$("#rf").value.trim();
 const newRe=st==="Resubmit needed"&&x.status!=="Resubmit needed";if(newRe&&!(du&&dl(du)>0))return toast("Choose a new due date in the future for the resubmission");
-if(st!==x.status)p.status=st;if(du!==(x.due||""))p.due=du;if(no!==(x.note||""))p.note=no;if(fb!==(x.feedback||""))p.feedback=fb;if(newRe)p.sent={};if(!Object.keys(p).length)return $("#rd").close();if(await upd("records/"+cur,p))$("#rd").close()};
+if(st!==x.status)p.status=st;if(du!==(x.due||""))p.due=du;if(no!==(x.note||""))p.note=no;if(fb!==(x.feedback||""))p.feedback=fb;if(newRe)p.sent={};if(!Object.keys(p).length)return $("#rd").close();const emailIt=!$("#rdemw").classList.contains("hide")&&$("#rdem").checked&&!$("#rdem").disabled&&(st==="Competent"||st==="Resubmit needed")&&st!==x.status;
+if(await upd("records/"+cur,p)){$("#rd").close();if(emailIt)await sendResult({...x,...p,status:st,due:du,feedback:fb,resultAt:new Date().toISOString()},st)}};
 let arm=null;const two=(b,fn)=>{if(arm===b){arm=null;fn()}else{arm=b;b.dataset.o=b.dataset.o||b.textContent;b.textContent="Click again to confirm";setTimeout(()=>{if(arm===b){arm=null;b.textContent=b.dataset.o}},3000)}};
 $("#rdel").onclick=function(){two(this,async()=>{if(await upd("records/"+cur,{archived:true})){$("#rd").close();toast("Record removed (kept in the database for audit)")}})};
 function sopen(id){cur=id;const s=allStu.find(x=>x.id===id)||{name:"",sid:"",course:(cl()[0]||{}).id||"",contact:""};const sd=$("#sdel");delete sd.dataset.o;sd.textContent=s.archived?"Restore student":"Archive student";sd.style.color=s.archived?"":"var(--red)";$("#sh").textContent=id?"Edit student":"New student";$("#sn").value=s.name;$("#si").value=s.sid;$("#sc").value=s.course;$("#scw").classList.toggle("hide",!!id);$("#se").value=s.contact||"";$("#sm").value=s.email||"";$("#siw").textContent="";$("#sdel").style.display=id?"":"none";$("#sd").showModal()}
@@ -1005,9 +1044,9 @@ $("#exp").onclick=async()=>{const h=["Student","ID","Course","Unit","Class date"
 const csv=[h,...recs.map(x=>{const s=stu(x.sid)||{};return[s.name,s.sid,cn(x.course),ulabel(x),x.classDate,x.due,x.status,x.contacted,x.note]})].map(r=>r.map(cell).join(",")).join("\n");
 const b=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="luna-export-"+iso(new Date())+".csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
 const SB=supabase.createClient("https://bionxlwsmvgaozfrqtqv.supabase.co","sb_publishable_8ONQsT8Opq68ozn8_Cptbw_tqhCwMXR");
-const MAP={students:{name:"name",sid:"sid",course:"course",contact:"contact",email:"email",archived:"archived"},records:{sid:"student_id",unit:"unit",course:"course",classDate:"class_date",due:"due",status:"status",contacted:"contacted",note:"note",sent:"sent",archived:"archived",feedback:"feedback",unitId:"unit_id"},courses:{code:"code",name:"name",time:"session_time",archived:"archived",units:"units"}};
+const MAP={students:{name:"name",sid:"sid",course:"course",contact:"contact",email:"email",archived:"archived"},records:{sid:"student_id",unit:"unit",course:"course",classDate:"class_date",due:"due",status:"status",contacted:"contacted",note:"note",sent:"sent",archived:"archived",feedback:"feedback",unitId:"unit_id",resultPending:"result_pending",resultAt:"result_at",resultSentAt:"result_sent_at"},courses:{code:"code",name:"name",time:"session_time",archived:"archived",units:"units"}};
 const DK=["contacted","class_date","due","unit_id"];
-const toRow=(t,id,o)=>{const r={id};for(const k in MAP[t]){const c=MAP[t][k];if(c==="unit_id"&&!UNITS_READY)continue;let v=o[k];if(v==null||(DK.includes(c)&&v===""))v=k==="units"?[]:k==="sent"?{}:k==="archived"?false:DK.includes(c)?null:"";r[c]=v}return r};
+const toRow=(t,id,o)=>{const r={id};for(const k in MAP[t]){const c=MAP[t][k];if(c==="unit_id"&&!UNITS_READY)continue;if(c==="result_pending"||c==="result_at"||c==="result_sent_at")continue;let v=o[k];if(v==null||(DK.includes(c)&&v===""))v=k==="units"?[]:k==="sent"?{}:k==="archived"?false:DK.includes(c)?null:"";r[c]=v}return r};
 const toPatch=(t,o)=>{const r={};for(const k in o){const c=MAP[t][k];if(!c)continue;let v=o[k];if(DK.includes(c)&&(v===""||v==null))v=null;r[c]=v}return r};
 const fromRow=(t,r)=>{const o={id:r.id};for(const k in MAP[t]){let v=r[MAP[t][k]];if(v==null)v=k==="units"?[]:k==="sent"?{}:k==="archived"?false:"";o[k]=v}return o};
 function derive(){RI=null;ARC=allStu.filter(s=>s.archived);students=allStu.filter(s=>!s.archived);const ai=new Set(ARC.map(s=>s.id));recs=allRecs.filter(r=>!r.archived&&!ai.has(r.sid))}
@@ -1047,7 +1086,7 @@ $("#na").classList.add("hide");$("#af").classList.remove("hide");document.body.c
 {const r=await SB.rpc("my_org");ORG=(r.data&&r.data[0])||null;if(r.error)$("#conn").textContent="Run luna-setup.sql in Supabase to finish setup"}
 isAdm=!!(await SB.rpc("is_admin")).data;isAss=isAdm||!!(await SB.rpc("is_assessor")).data;$$(".adm").forEach(e=>e.classList.toggle("hide",!isAdm));meUI();if(ORG)$("#conn").innerHTML="";orgUI();if(ORG&&ORG.platform_admin&&isAdm)loadOrgs();loadLeads();
 await Promise.all(["courses","students","records"].concat(isAdm?["staff"]:[]).map(refresh));PF=null;go("to")}
-SB.auth.onAuthStateChange((ev,ses)=>{if(ev==="PASSWORD_RECOVERY"){document.body.classList.add("anon");setMode("rec");return}setTimeout(()=>start(ses),0)});
+SB.auth.onAuthStateChange((ev,ses)=>{if(ev==="USER_UPDATED"||ev==="SIGNED_OUT"){HOLD=false;pwSet(false)}if(HOLD&&(ev==="SIGNED_IN"||ev==="INITIAL_SESSION"||ev==="TOKEN_REFRESHED"))return;if(ev==="PASSWORD_RECOVERY"){HOLD=true;pwSet(true);document.body.classList.add("anon");setMode("rec");am("Choose a password to finish setting up your account.");return}setTimeout(()=>start(ses),0)});
 setInterval(()=>{if(uid&&!document.hidden)["students","records","courses"].forEach(refresh);loadLeads()},30000);
 document.addEventListener("visibilitychange",()=>{if(uid&&!document.hidden)["students","records","courses"].forEach(refresh)});
 const AC=["#2563eb","#4f46e5","#9333ea","#e11d48","#ea580c","#0d9488"];
@@ -1057,18 +1096,19 @@ let sv="#4f46e5";try{sv=localStorage.getItem("ac")||sv}catch(e){}setAc(sv);
 function setTh(t){document.documentElement.setAttribute("data-theme",t);try{localStorage.setItem("th",t)}catch(e){}$("#th").textContent=t==="dark"?"Switch to light mode":"Switch to dark mode"}
 $("#th").onclick=()=>setTh(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
 let tt="light";try{tt=localStorage.getItem("th")||tt}catch(e){}setTh(tt);
-// Paste your Apps Script "Web app" URL between the quotes (ends in /exec). See luna-email-apps-script.gs.
+// The Apps Script web app that sends the emails (the address ends in /exec). If you ever make a NEW deployment of the script, this address changes and must be updated here.
 const MAIL_URL="https://script.google.com/macros/s/AKfycbwiUZKiMgIQcMnM3MeSB6Y7fbu0GeNge1NLAhxDoLJiAiXYE0CLMJ9CxiPscAiidVD0/exec";
-const STG=["notice","week","three","over","over2","resub"],CC=()=>{try{return localStorage.getItem("cc")||""}catch(e){return""}};
+const STG=["notice","week","three","over","over2","resub","result"],CC=()=>{try{return localStorage.getItem("cc")||""}catch(e){return""}};
 const dfull=s=>parse(s).toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"long",year:"numeric"});
-function stage(r){if(!isOut(r))return null;const d=dl(r.due),sn=r.sent||{},td=iso(new Date());if(Object.values(sn).includes(td))return null;if(r.status==="Resubmit needed"&&!sn.resub)return 5;if(d>=0&&!sn.notice&&r.status!=="Resubmit needed")return 0;if(d<0&&!sn.over)return 3;const el=[];if(d>=0&&d<=7)el.push(1);if(d>=0&&d<=3)el.push(2);if(d<=-7)el.push(4);const t=el[el.length-1];return t!==undefined&&!sn[STG[t]]?t:null}
-function mail(s,st,rs){const f=(s.name||"").split(" ")[0]||"there",L=rs.map(r=>st===5?"• "+ulabel(r)+" – resubmit by "+dfull(r.due)+(r.feedback?"\n   Assessor feedback: "+r.feedback:""):"• "+ulabel(r)+" – due "+dfull(r.due)).join("\n");
+function stage(r){if(r.status==="Competent")return r.resultPending?6:null;if(!isOut(r))return null;const d=dl(r.due),sn=r.sent||{},td=iso(new Date());if(Object.values(sn).includes(td))return null;if(r.status==="Resubmit needed"&&!sn.resub)return 5;if(d>=0&&!sn.notice&&r.status!=="Resubmit needed")return 0;if(d<0&&!sn.over)return 3;const el=[];if(d>=0&&d<=7)el.push(1);if(d>=0&&d<=3)el.push(2);if(d<=-7)el.push(4);const t=el[el.length-1];return t!==undefined&&!sn[STG[t]]?t:null}
+function mail(s,st,rs){const f=(s.name||"").split(" ")[0]||"there",L=rs.map(r=>st===6?"• "+ulabel(r)+" ("+co(r.course).name+") – assessed "+dfull(rdate(r))+(r.feedback?"\n   Assessor feedback: "+r.feedback:""):st===5?"• "+ulabel(r)+" – resubmit by "+dfull(r.due)+(r.feedback?"\n   Assessor feedback: "+r.feedback:""):"• "+ulabel(r)+" – due "+dfull(r.due)).join("\n");
 const T=[["Your assessment due dates – "+orgName(),"Hi "+f+",\n\nThank you for attending class. Here are your assessment submission dates:\n\n"+L+"\n\nPlease submit by these dates. If you need help or an extension, contact us before the due date."],
 ["Reminder: assessment due within a week","Hi "+f+",\n\nA reminder that the following assessment(s) are due within a week:\n\n"+L+"\n\nPlease submit on time, or contact us if you need support."],
 ["Reminder: assessment due in 3 days","Hi "+f+",\n\nThe following assessment(s) are due in 3 days or less:\n\n"+L+"\n\nPlease submit on time, or contact us now if you need help."],
 ["Overdue: assessment not yet submitted","Hi "+f+",\n\nWe have not received the following assessment(s), which are now overdue:\n\n"+L+"\n\nPlease submit as soon as possible, or contact us today to discuss your situation."],
 ["Second notice: overdue assessment","Hi "+f+",\n\nThis is a second notice. The following assessment(s) are still outstanding:\n\n"+L+"\n\nPlease submit immediately or contact us so we can support you to complete your course."],
-["Resubmission needed – "+orgName(),"Hi "+f+",\n\nThank you for submitting your assessment. It has been marked Not Yet Competent for the following unit(s), so we need you to resubmit:\n\n"+L+"\n\nYou don't need to start again. Focus on the feedback above and resubmit by the new due date. If you would like help, reply to this email and we will arrange support."]][st];
+["Resubmission needed – "+orgName(),"Hi "+f+",\n\nThank you for submitting your assessment. It has been marked Not Yet Competent for the following unit(s), so we need you to resubmit:\n\n"+L+"\n\nYou don't need to start again. Focus on the feedback above and resubmit by the new due date. If you would like help, reply to this email and we will arrange support."],
+["Your assessment result – "+orgName(),"Hi "+f+",\n\nCongratulations! You have been assessed as Competent in:\n\n"+L+"\n\nThis email is a record of your result. Please keep it with your training records.\n\nIf you have any questions about your results, reply to this email."]][st];
 return{su:T[0],body:T[1]+"\n\nKind regards,\n"+orgName()}}
 function emCard(g){const s=stu(g.sid)||allStu.find(y=>y.id===g.sid)||{name:"(removed)"},x=mail(s,g.st,g.rs),k=esc(g.k);
 return`<article class="ecard"><div class="ehead">${avatar(s.name)}<div class="einfo"><b>${esc(s.name)}</b><small>${s.email?esc(s.email):"No email address"}</small></div><span class="pill ${EMC[g.st]}">${EMN[g.st]}</span></div>
@@ -1131,13 +1171,18 @@ if(!MAIL_URL)return{error:"Email sending isn't set up yet. Paste the Apps Script
 try{const r=await fetch(MAIL_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(obj),redirect:"follow"});
 const t=await r.text();try{return JSON.parse(t)}catch(_){return{error:"The email service didn't answer properly. Check the Apps Script deployment (Web app, access: Anyone)."}}}
 catch(e){return{error:"Couldn't reach the email service: "+e.message}}}
-const here=()=>location.href.split("#")[0];
+// The live address of Luna. Links in emails always point here, whichever address the person happened to be using when they pressed Send.
+const SITE_URL="https://smseve-dem.vercel.app/";
+const here=()=>SITE_URL||(location.origin+location.pathname);
 async function accessMail(){const email=$("#ae").value.trim();if(!email)return am("Enter your email first",1);am("Sending…");
 const j=await postMail({action:"reset",email,redirectTo:here()});
 am(j.error?j.error:"If that email is on the staff list, we've sent a link to set your password. It can take a minute, and check your junk folder.",!!j.error)}
 async function inviteStaff(email){toast("Sending a link to "+email+"…");const{data:{session}}=await SB.auth.getSession();if(!session)return toast("Please sign in again");
 const j=await postMail({action:"invite",jwt:session.access_token,email,redirectTo:here()});
-toast(j.error?"Couldn't send the link to "+email+": "+j.error:"Link sent to "+email+" so they can set their password.")}
+if(j.error)return toast("Couldn't send the link to "+email+": "+j.error,8000);
+if(j.own===true)return toast("Link sent to "+email+" so they can set their password.");
+if(j.own===false)return toast("Sent to "+email+", but the link still goes through Supabase ("+(j.why==="no_code"?"Supabase did not return a code":"the page address was not accepted: "+(j.addr||here()))+"). Tell me and I will look.",12000);
+toast("Sent to "+email+", but the email service is an OLD version, so the link goes through Supabase. Paste the newest script into Apps Script and deploy it as a New version.",14000)}
 async function callMail(items){
 if(!MAIL_URL)return{error:"Email sending isn't set up yet. Paste the Apps Script web app URL into MAIL_URL in index.html."};
 try{const{data:{session}}=await SB.auth.getSession();if(!session)return{error:"Please sign in again"};
@@ -1165,7 +1210,7 @@ async function emAct(e){const b=e.target.closest("button[data-a]");if(!b)return;
 if(a==="send"){await sendGroups([g]);return}
 if(a==="cp"){try{await navigator.clipboard.writeText(x.su+"\n\n"+x.body);toast("Copied")}catch(_){prompt("Copy this email:",x.body)}return}
 if(a==="gm"||a==="ml"){const u=a==="gm"?"https://mail.google.com/mail/?view=cm&fs=1&to="+q(s.email)+"&su="+q(x.su)+"&body="+q(x.body)+(cc?"&cc="+q(cc):""):"mailto:"+s.email+"?subject="+q(x.su)+"&body="+q(x.body)+(cc?"&cc="+q(cc):"");const l=document.createElement("a");l.href=u;l.target="_blank";l.rel="noopener";l.click();toast("After you send it, click Mark sent");return}
-if(a!=="ms")return;for(const r of g.rs)await upd("records/"+r.id,{sent:{...(r.sent||{}),[STG[g.st]]:iso(new Date())}});toast("Marked as sent")}
+if(a!=="ms")return;for(const r of g.rs)await upd("records/"+r.id,{sent:{...(r.sent||{}),[STG[g.st]]:iso(new Date())},...(g.st>=5?{resultPending:false}:{})});toast("Marked as sent")}
 $("#emlist").onclick=emAct;
 $("#cc").value=CC();$("#cc").oninput=()=>{try{localStorage.setItem("cc",$("#cc").value.trim())}catch(e){}};
 const nm=x=>String(x||"").toLowerCase().replace(/[^a-z0-9@.\s]/g," ").replace(/\s+/g," ").trim();
@@ -1183,6 +1228,7 @@ $("#bkb").onclick=bulk;$("#bkt").onpaste=()=>setTimeout(bulk,0);$("#bkc").onclic
 $("#bkr").onclick=async e=>{if(e.target.id!=="bka")return;const c=$("#ldc").value;let i=0;for(const n of UN){const id="s"+Date.now().toString(36)+(i++);if(await put("students/"+id,{name:n,sid:"",course:c,contact:"",email:""}))sel.s.add(id)}UN=[];$("#bkr").innerHTML="";toast("Students added – fill in their ID and email on the Students tab");ldlists()};
 document.body.classList.add("anon");crs();render();
 setInterval(render,36e5);
+linkParams();
 
 </script>
 </body></html>
